@@ -1,0 +1,224 @@
+/* === Clothing Card v2 === */
+.clothing-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.card-accent-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.8;
+  z-index: 2;
+  box-shadow: 0 0 10px var(--card-accent);
+}
+
+.card-image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/5;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.card-image-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.8s ease;
+  z-index: 2;
+  position: relative;
+}
+
+.card-image.loaded {
+  opacity: 1;
+}
+
+.clothing-card:hover .card-image {
+  transform: scale(1.05);
+}
+
+.card-color-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(10, 13, 20, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  z-index: 3;
+}
+
+.card-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.card-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.card-title {
+  font-size: 1.063rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-action {
+  color: var(--text-tertiary);
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all var(--transition-base);
+  margin: -4px -4px 0 0;
+}
+
+.clothing-card:hover .btn-action {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.btn-action:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-delete:hover {
+  color: var(--accent-coral);
+  background: var(--accent-coral-soft);
+}
+
+.card-category {
+  font-size: 0.813rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  margin-bottom: 4px;
+}
+
+.card-brand {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-tag {
+  font-size: 0.688rem;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.card-tag.empty {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.card-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+/* Selectable State (for Outfits Builder) */
+.clothing-card.selectable {
+  cursor: pointer;
+}
+
+.clothing-card.selectable:hover {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 0 2px var(--accent-violet-soft);
+}
+
+.clothing-card.selected {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 0 2px var(--accent-violet);
+}
+
+.card-selected-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(139, 92, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+
+.card-selected-check {
+  width: 48px;
+  height: 48px;
+  background: var(--accent-violet);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5);
+  animation: fadeInScale 0.2s ease-out;
+}
+
+.card-selected-check .icon {
+  width: 24px;
+  height: 24px;
+}
