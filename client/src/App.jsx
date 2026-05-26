@@ -16,7 +16,7 @@ import './App.css';
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="page-loader"><div className="loader-spinner" /></div>;
-  return user ? children : <Navigate to="/login" />;
+  return user ? children : <Navigate to="/" />;
 }
 
 function PublicRoute({ children }) {
