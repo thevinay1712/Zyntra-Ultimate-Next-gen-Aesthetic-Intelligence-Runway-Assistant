@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const Clothing = require('../models/Clothing');
 const { extractColors } = require('../services/imageService');
+const FormData = require('form-data');
+const fetch = require('node-fetch');
 
 const router = express.Router();
 
@@ -78,12 +80,66 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'An item with this name already exists in your wardrobe.' });
     }
 
-    // Extract colors from image
-    let colorData = { primary: '#888888', secondary: '', palette: [] };
+    // --- CLOSET AI: FORWARD IMAGE FOR QUALITY & FASHION UNDERSTANDING ---
+    let aiQuality = 'Good';
+    let aiQualityDetails = 'Excellent quality';
+    let aiColor = null;
+    let aiPattern = 'Solid';
+    let aiAesthetic = 'Casual';
+    let aiFit = 'Regular';
+
     try {
-      colorData = await extractColors(req.file.path);
-    } catch (e) {
-      console.warn('Color extraction failed:', e.message);
+      console.log('🧠 Querying Zyntra Closet AI service...');
+      const formData = new FormData();
+      formData.append('image', fs.createReadStream(req.file.path));
+      formData.append('category', category || 'tops');
+
+      const aiResponse = await fetch('http://localhost:8000/analyze-clothing', {
+        method: 'POST',
+        body: formData,
+        headers: formData.getHeaders(),
+        timeout: 10000 // 10-second timeout
+      });
+
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        aiQuality = aiData.quality;
+        aiQualityDetails = aiData.qualityDetails;
+        aiColor = aiData.color;
+        aiPattern = aiData.pattern;
+        aiAesthetic = aiData.aesthetic;
+        aiFit = aiData.fit;
+
+        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}`);
+      } else {
+        console.warn('AI Service returned non-ok status:', aiResponse.status);
+      }
+    } catch (err) {
+      console.warn('AI Service offline or failed. Graceful fallback active:', err.message);
+    }
+
+    // If quality is Bad, reject the upload and delete the file!
+    if (aiQuality === 'Bad') {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        message: `AI Upload Rejection: ${aiQualityDetails}`,
+        quality: 'Bad',
+        details: aiQualityDetails
+      });
+    }
+
+    // Extract colors (use AI colors if available, otherwise run local fallback)
+    let colorData = { primary: '#888888', secondary: '', palette: [] };
+    if (aiColor) {
+      colorData = aiColor;
+    } else {
+      try {
+        colorData = await extractColors(req.file.path);
+      } catch (e) {
+        console.warn('Fallback color extraction failed:', e.message);
+      }
     }
 
     const clothing = await Clothing.create({
@@ -98,6 +154,10 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       imageHash: fileHash,
       brand: brand || '',
       tags,
+      uploadQuality: aiQuality,
+      aesthetic: aiAesthetic,
+      pattern: aiPattern,
+      fit: aiFit
     });
 
     res.status(201).json({ clothing });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { recommendAPI } from '../lib/api';
+import { recommendAPI, clothingAPI } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import './Recommend.css';
 
@@ -519,6 +519,12 @@ export default function Recommend() {
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartRot, setDragStartRot] = useState(0);
 
+  // Wardrobe loaded from server
+  const [clothes, setClothes] = useState([]);
+  const [fetchingClothes, setFetchingClothes] = useState(false);
+
+  const { success, error } = useToast();
+
   const handleDragStart = (e) => {
     setIsDragging(true);
     setDragStartX(e.clientX);
@@ -564,7 +570,292 @@ export default function Recommend() {
     setAutoRotate(false);
   };
 
-  const { success, error } = useToast();
+  // Color Harmony Helper functions
+  const hexToHSL = (hex) => {
+    if (!hex) return { h: 0, s: 0, l: 0 };
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  };
+
+  const isComplementary = (hex1, hex2) => {
+    const hsl1 = hexToHSL(hex1);
+    const hsl2 = hexToHSL(hex2);
+    const diff = Math.abs(hsl1.h - hsl2.h);
+    return diff >= 150 && diff <= 210;
+  };
+
+  const isAnalogous = (hex1, hex2) => {
+    const hsl1 = hexToHSL(hex1);
+    const hsl2 = hexToHSL(hex2);
+    const diff = Math.abs(hsl1.h - hsl2.h);
+    return diff <= 30 || diff >= 330;
+  };
+
+  const isNeutral = (hex) => {
+    const hsl = hexToHSL(hex);
+    return hsl.s < 15 || hsl.l < 15 || hsl.l > 90;
+  };
+
+  const colorHarmonyScore = (hex1, hex2) => {
+    if (!hex1 || !hex2) return 50;
+    if (isNeutral(hex1) || isNeutral(hex2)) return 85;
+    if (isAnalogous(hex1, hex2)) return 80;
+    if (isComplementary(hex1, hex2)) return 90;
+    
+    const hsl1 = hexToHSL(hex1);
+    const hsl2 = hexToHSL(hex2);
+    const hueDiff = Math.abs(hsl1.h - hsl2.h);
+    if ((hueDiff >= 110 && hueDiff <= 130) || (hueDiff >= 230 && hueDiff <= 250)) return 75;
+    
+    return 60;
+  };
+
+  const getColorNote = (hex1, hex2) => {
+    if (!hex1 || !hex2) return 'Classic combination';
+    if (isNeutral(hex1) && isNeutral(hex2)) return 'Neutral palette — timeless and versatile';
+    if (isNeutral(hex1) || isNeutral(hex2)) return 'Neutral base with a color accent — always works';
+    if (isComplementary(hex1, hex2)) return 'Complementary colors — bold and eye-catching';
+    if (isAnalogous(hex1, hex2)) return 'Analogous harmony — smooth and cohesive';
+    return 'Interesting color mix — makes a statement';
+  };
+
+  // Local Outfit Matchmaker Algorithm
+  const generateLocalRecommendations = () => {
+    const tops = clothes.filter((c) => c.category === 'tops');
+    const bottoms = clothes.filter((c) => c.category === 'bottoms');
+    const shoes = clothes.filter((c) => c.category === 'shoes');
+    const outerwear = clothes.filter((c) => c.category === 'outerwear');
+    const accessories = clothes.filter((c) => c.category === 'accessories');
+
+    if (tops.length === 0 || bottoms.length === 0) {
+      return [];
+    }
+
+    const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
+    const isColdWeather = currentTemp < 15;
+
+    const outfits = [];
+
+    for (const top of tops) {
+      for (const bottom of bottoms) {
+        let score = 0;
+        let reasons = [];
+
+        // 1. Color harmony (weighted 40%)
+        const colorScore = colorHarmonyScore(top.color?.primary, bottom.color?.primary);
+        score += colorScore * 0.4;
+
+        // 2. Aesthetic Cohesion (0-25)
+        if (top.aesthetic && bottom.aesthetic && top.aesthetic === bottom.aesthetic) {
+          score += 25;
+          reasons.push(`${top.aesthetic} style cohesion`);
+        } else {
+          if ((top.aesthetic === 'Formal' && bottom.aesthetic === 'Activewear') || 
+              (top.aesthetic === 'Activewear' && bottom.aesthetic === 'Formal')) {
+            score -= 10;
+          } else {
+            score += 8;
+          }
+        }
+
+        // 3. Occasion match
+        const topOccasionMatch = top.occasion?.includes(params.occasion);
+        const bottomOccasionMatch = bottom.occasion?.includes(params.occasion);
+        
+        if (topOccasionMatch && bottomOccasionMatch) {
+          score += 20;
+          reasons.push('perfect occasion match');
+        } else if (topOccasionMatch || bottomOccasionMatch) {
+          score += 10;
+        } else {
+          let aestheticOk = false;
+          if (params.occasion === 'casual' && ['Casual', 'Streetwear', 'Minimal'].includes(top.aesthetic)) aestheticOk = true;
+          if (params.occasion === 'formal' && ['Formal', 'Minimal'].includes(top.aesthetic)) aestheticOk = true;
+          if (params.occasion === 'sport' && ['Activewear'].includes(top.aesthetic)) aestheticOk = true;
+          if (params.occasion === 'party' && ['Streetwear', 'Casual'].includes(top.aesthetic)) aestheticOk = true;
+          
+          if (aestheticOk) {
+            score += 12;
+            reasons.push('aesthetic occasion match');
+          }
+        }
+
+        // 4. Weather Season Match
+        let activeSeason = '';
+        if (currentTemp < 10) activeSeason = 'winter';
+        else if (currentTemp >= 10 && currentTemp < 17) activeSeason = 'fall';
+        else if (currentTemp >= 17 && currentTemp < 23) activeSeason = 'spring';
+        else activeSeason = 'summer';
+
+        const finalSeason = params.season || activeSeason;
+        const topSeasonMatch = top.season?.includes(finalSeason);
+        const bottomSeasonMatch = bottom.season?.includes(finalSeason);
+
+        if (topSeasonMatch && bottomSeasonMatch) {
+          score += 15;
+          reasons.push('season appropriate');
+        } else if (topSeasonMatch || bottomSeasonMatch) {
+          score += 8;
+        }
+
+        // Pick best matching shoes
+        let bestShoe = null;
+        let bestShoeScore = 0;
+        for (const shoe of shoes) {
+          let shoeScore = colorHarmonyScore(shoe.color?.primary, top.color?.primary) * 0.3 +
+            colorHarmonyScore(shoe.color?.primary, bottom.color?.primary) * 0.3;
+          if (shoe.occasion?.includes(params.occasion)) shoeScore += 20;
+          if (shoe.aesthetic === top.aesthetic) shoeScore += 10;
+          if (shoeScore > bestShoeScore) {
+            bestShoeScore = shoeScore;
+            bestShoe = shoe;
+          }
+        }
+
+        // Pick optional outerwear
+        let bestOuterwear = null;
+        let bestOwScore = 0;
+        
+        for (const ow of outerwear) {
+          let owScore = colorHarmonyScore(ow.color?.primary, top.color?.primary) * 0.4 +
+            colorHarmonyScore(ow.color?.primary, bottom.color?.primary) * 0.2;
+          
+          if (ow.season?.includes(finalSeason)) owScore += 25;
+          if (ow.aesthetic === top.aesthetic) owScore += 15;
+          
+          if (owScore > bestOwScore) {
+            bestOwScore = owScore;
+            bestOuterwear = ow;
+          }
+        }
+
+        // If it's cold, require or highly boost if we found outerwear
+        if (isColdWeather) {
+          if (bestOuterwear) {
+            score += 20;
+            reasons.push('weather layering active');
+          } else {
+            score -= 15; // penalty for lack of protection
+          }
+        }
+
+        // Pick optional accessory
+        let bestAccessory = null;
+        let bestAccScore = 0;
+        for (const acc of accessories) {
+          let accScore = colorHarmonyScore(acc.color?.primary, top.color?.primary) * 0.5;
+          if (acc.occasion?.includes(params.occasion)) accScore += 20;
+          if (acc.aesthetic === top.aesthetic) accScore += 10;
+          if (accScore > bestAccScore) {
+            bestAccScore = accScore;
+            bestAccessory = acc;
+          }
+        }
+
+        // Calculate final score bounded [40, 99]
+        let finalScore = Math.min(Math.round(score), 99);
+        if (finalScore < 40) finalScore = 40;
+
+        // Determine main reason
+        let mainReason = 'Aesthetic Alignment';
+        if (reasons.includes('weather layering active')) mainReason = 'Weather Protective Layering';
+        else if (colorScore >= 85) mainReason = 'Exquisite Color Harmony';
+        else if (reasons.includes('perfect occasion match')) mainReason = `Perfect ${params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1)} Match`;
+        else if (reasons.length > 0) mainReason = reasons[0];
+
+        const items = { top, bottom };
+        if (bestShoe) items.shoes = bestShoe;
+        if (bestOuterwear && (isColdWeather || bestOwScore > 40)) items.outerwear = bestOuterwear;
+        if (bestAccessory) items.accessory = bestAccessory;
+
+        outfits.push({
+          items,
+          score: finalScore,
+          reason: mainReason,
+          colorNote: getColorNote(top.color?.primary, bottom.color?.primary)
+        });
+      }
+    }
+
+    outfits.sort((a, b) => b.score - a.score);
+
+    const seen = new Set();
+    const unique = [];
+    for (const outfit of outfits) {
+      const key = `${outfit.items.top._id}-${outfit.items.bottom._id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(outfit);
+      }
+      if (unique.length >= 5) break;
+    }
+
+    return unique;
+  };
+
+  const generateAIAdviceText = (topOutfit) => {
+    if (!topOutfit) return '';
+
+    const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
+    const isCold = currentTemp < 15;
+    const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
+
+    let advice = `Hello there! I am your Closet AI Stylist. For your ${params.occasion} outing today in ${currentTemp}°C weather, I have designed a premium styling recommendation from your wardrobe.\n\n`;
+
+    if (isCold) {
+      advice += `Since it's quite chilly (${currentTemp}°C) outside, I recommend layering to keep you comfortable. `;
+      if (outerwear) {
+        advice += `I've selected your ${outerwear.name} as a protective outerwear layer. Style it open over the ${top.name} for a modern, relaxed silhouette. `;
+      } else {
+        advice += `I suggest wearing your ${top.name} top, but please note that you don't have any outerwear (like jackets or coats) in your digital wardrobe yet. Scan one soon for optimal cold-weather recommendations! `;
+      }
+    } else {
+      advice += `The weather is perfect and pleasant (${currentTemp}°C), so we can keep your outfit light and breezy. I suggest wearing the ${top.name} as your core top. `;
+    }
+
+    advice += `Pair it with your ${bottom.name} bottom. `;
+
+    if (top.aesthetic && bottom.aesthetic && top.aesthetic === bottom.aesthetic) {
+      advice += `Both items align beautifully under the ${top.aesthetic} aesthetic, creating a very cohesive and intentional look. `;
+    } else {
+      advice += `This blends a ${top.aesthetic || 'Casual'} top with a ${bottom.aesthetic || 'Casual'} bottom, creating a balanced and relaxed outfit. `;
+    }
+
+    if (shoes) {
+      advice += `For footwear, slide into your ${shoes.name} to round out the style. `;
+    }
+
+    if (accessory) {
+      advice += `Finally, accent the look with your ${accessory.name} for that perfect finishing touch. `;
+    }
+
+    advice += `\n\nColor Harmony: ${topOutfit.colorNote}. The ${top.color?.primary} and ${bottom.color?.primary} color palette is very ${topOutfit.score > 85 ? 'striking and sophisticated' : 'flattering'}.`;
+
+    return advice;
+  };
 
   // Load weather, customized avatar and fit adjustments from localStorage
   useEffect(() => {
@@ -596,6 +887,22 @@ export default function Recommend() {
       setFitSettings(JSON.parse(storedFits));
     }
   }, [tryOnOutfit]);
+
+  // Load user clothes from backend
+  useEffect(() => {
+    const fetchClothes = async () => {
+      try {
+        setFetchingClothes(true);
+        const { data } = await clothingAPI.getAll();
+        setClothes(data.clothes || []);
+      } catch (err) {
+        console.error('Failed to fetch user clothes:', err);
+      } finally {
+        setFetchingClothes(false);
+      }
+    };
+    fetchClothes();
+  }, []);
 
   // Handle auto rotation of try-on model
   useEffect(() => {
@@ -632,35 +939,28 @@ export default function Recommend() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setLoading(true);
     setHasSearched(true);
     setTryOnOutfit(null);
 
-    // Derive matched season filter based on current simulated or real temperature
-    const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
-    let autoSeason = '';
-    if (currentTemp < 10) autoSeason = 'winter';
-    else if (currentTemp >= 10 && currentTemp < 17) autoSeason = 'fall';
-    else if (currentTemp >= 17 && currentTemp < 23) autoSeason = 'spring';
-    else autoSeason = 'summer';
-
-    const finalParams = {
-      occasion: params.occasion,
-      season: params.season || autoSeason
-    };
-
-    try {
-      const { data } = await recommendAPI.get(finalParams);
-      setRecommendations(data.recommendations || []);
-      if (data.recommendations?.length > 0) {
-        success(`Generated suggestions matching ${params.occasion}!`);
+    // Simulate AI thinking delay for premium feel
+    setTimeout(() => {
+      try {
+        const localRecs = generateLocalRecommendations();
+        setRecommendations(localRecs);
+        if (localRecs.length > 0) {
+          success(`Generated ${localRecs.length} matching suggestions for a ${params.occasion} day!`);
+        } else {
+          error('Not enough items in your closet to generate styling.');
+        }
+      } catch (err) {
+        console.error(err);
+        error('Failed to run Closet AI matchmaker');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      error('Failed to get suggestions');
-    } finally {
-      setLoading(false);
-    }
+    }, 1200);
   };
 
   const updateFitSetting = (itemId, param, val) => {
@@ -693,7 +993,7 @@ export default function Recommend() {
         <div className="recommend-header animate-fade-in">
           <div className="ai-badge">
             <div className="ai-dot" />
-            Zyntra AI Engine v2
+            Zyntra Closet AI Engine v2
           </div>
           <h1 className="dashboard-title">Smart Styling</h1>
           <p className="dashboard-subtitle">Let Zyntra styling algorithms build custom wardrobe suggestions for your next event.</p>
@@ -800,60 +1100,100 @@ export default function Recommend() {
             <p className="font-heading">Zyntra styling layers aligning...</p>
           </div>
         ) : hasSearched && recommendations.length > 0 ? (
-          <div className="recommend-results">
-            {recommendations.map((rec, i) => (
-              <div key={i} className="rec-card glass-card animate-slide-up" style={{ animationDelay: `${i * 0.15}s` }}>
-                <div className="rec-header">
-                  <div className="rec-score">
-                    <IconStar />
-                    <span>{rec.score}% Style Match</span>
-                  </div>
-                  <div className="rec-header-actions">
-                    <button
-                      className="btn btn-primary btn-sm btn-tryon"
-                      onClick={() => {
-                        setTryOnOutfit(rec.items);
-                        setAvatarRotation(0);
-                        setViewMode('front');
-                      }}
-                    >
-                      ✨ Try On Avatar
-                    </button>
-                  </div>
+          <div className="recommend-results animate-fade-in">
+            {/* CLOSET AI ADVISOR CHAT CARD */}
+            <div className="closet-ai-advisor glass-card animate-slide-up">
+              <div className="advisor-header">
+                <div className="advisor-avatar-container">
+                  <div className="advisor-avatar-glow" />
+                  <span className="advisor-avatar-emoji">🧠</span>
                 </div>
-
-                <div className="rec-reason">
-                  <span className="badge badge-violet">{rec.reason}</span>
-                </div>
-
-                <div className="rec-color-note">
-                  <p>{rec.colorNote}</p>
-                </div>
-
-                <div className="rec-items">
-                  {['top', 'bottom', 'outerwear', 'shoes', 'accessory'].map((slot) => {
-                    if (!rec.items[slot]) return null;
-                    return (
-                      <div key={slot} className="rec-item">
-                        <span className="rec-item-label">{slot}</span>
-                        <div className="rec-item-img-wrap" style={{ borderColor: rec.items[slot].color?.primary || 'var(--border-subtle)' }}>
-                          <img 
-                            src={`http://localhost:5000${rec.items[slot].imageUrl}`} 
-                            alt={rec.items[slot].name || slot} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="advisor-meta">
+                  <span className="advisor-tag">CLOSET AI STYLIST</span>
+                  <h3 className="advisor-title">Personalized Fashion Advice</h3>
                 </div>
               </div>
-            ))}
+              <div className="advisor-content">
+                <p className="advisor-text">
+                  {generateAIAdviceText(recommendations[0])}
+                </p>
+              </div>
+            </div>
+
+            <h3 className="section-title" style={{ margin: '32px 0 16px 0', fontSize: '1.25rem', fontWeight: 800 }}>Recommended Closet Combinations</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {recommendations.map((rec, i) => (
+                <div key={i} className="rec-card glass-card animate-slide-up" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <div className="rec-header">
+                    <div className="rec-score">
+                      <IconStar />
+                      <span>{rec.score}% Style Match</span>
+                    </div>
+                    <div className="rec-header-actions">
+                      <button
+                        className="btn btn-primary btn-sm btn-tryon"
+                        onClick={() => {
+                          setTryOnOutfit(rec.items);
+                          setAvatarRotation(0);
+                          setViewMode('front');
+                        }}
+                      >
+                        ✨ Try On Avatar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rec-reason">
+                    <span className="badge badge-violet">{rec.reason}</span>
+                  </div>
+
+                  <div className="rec-color-note">
+                    <p>{rec.colorNote}</p>
+                  </div>
+
+                  <div className="rec-items">
+                    {['top', 'bottom', 'outerwear', 'shoes', 'accessory'].map((slot) => {
+                      if (!rec.items[slot]) return null;
+                      return (
+                        <div key={slot} className="rec-item glass-card">
+                          <span className="rec-item-label">{slot}</span>
+                          <div className="rec-item-img-wrap" style={{ borderColor: rec.items[slot].color?.primary || 'var(--border-subtle)' }}>
+                            <DressingItemImage 
+                              src={`http://localhost:5000${rec.items[slot].imageUrl}`} 
+                              alt={rec.items[slot].name || slot} 
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                            />
+                          </div>
+                          <div className="rec-item-details">
+                            <span className="rec-item-name" title={rec.items[slot].name}>{rec.items[slot].name}</span>
+                            {rec.items[slot].brand && (
+                              <span className="rec-item-brand">{rec.items[slot].brand}</span>
+                            )}
+                            <div className="rec-item-meta-tags">
+                              {rec.items[slot].aesthetic && (
+                                <span className="meta-tag aesthetic">{rec.items[slot].aesthetic}</span>
+                              )}
+                              {rec.items[slot].fit && (
+                                <span className="meta-tag fit">{rec.items[slot].fit}</span>
+                              )}
+                              {rec.items[slot].pattern && (
+                                <span className="meta-tag pattern">{rec.items[slot].pattern}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : hasSearched ? (
           <div className="empty-state animate-fade-in">
             <h3 className="empty-title">Wardrobe count low</h3>
-            <p className="empty-subtitle">We couldn't align enough Tops and Bottoms to generate complete style combinations. Try uploading more clothes!</p>
+            <p className="empty-subtitle">We couldn't align enough Tops and Bottoms from your wardrobe to generate styling combinations. Try uploading more clothing items with the guidelines!</p>
           </div>
         ) : null}
       </div>

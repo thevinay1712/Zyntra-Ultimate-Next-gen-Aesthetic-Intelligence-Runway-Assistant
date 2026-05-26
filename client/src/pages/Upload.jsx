@@ -18,6 +18,28 @@ const CATEGORIES = ['tops', 'bottoms', 'shoes', 'outerwear', 'accessories'];
 const SEASONS = ['spring', 'summer', 'fall', 'winter'];
 const OCCASIONS = ['casual', 'formal', 'sport', 'party'];
 
+const FASHION_QUOTES = [
+  { text: "Fashions fade, style is eternal.", author: "Yves Saint Laurent" },
+  { text: "Fashion is the armor to survive the reality of everyday life.", author: "Bill Cunningham" },
+  { text: "Dressing well is a form of good manners.", author: "Tom Ford" },
+  { text: "Style is a way to say who you are without having to speak.", author: "Rachel Zoe" },
+  { text: "Clothes mean nothing until someone lives in them.", author: "Marc Jacobs" },
+  { text: "In order to be irreplaceable, one must always be different.", author: "Coco Chanel" },
+  { text: "Elegance is not standing out, but being remembered.", author: "Giorgio Armani" },
+  { text: "Fashion should be a form of escapism, and not a form of imprisonment.", author: "Alexander McQueen" },
+  { text: "Style is primarily a matter of instinct.", author: "Bill Blass" },
+  { text: "The joy of dressing is an art.", author: "John Galliano" },
+  { text: "Looking good isn't self-importance; it's self-respect.", author: "Charles Hix" },
+  { text: "Make it simple, but significant.", author: "Don Draper" },
+  { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+  { text: "You can have anything you want in life if you dress for it.", author: "Edith Head" },
+  { text: "Fashion is instant language.", author: "Miuccia Prada" },
+  { text: "One is never over-dressed or under-dressed with a Little Black Dress.", author: "Karl Lagerfeld" },
+  { text: "Create your own visual style... let it be unique.", author: "Orson Welles" },
+  { text: "Fashion is about dressing according to what's fashionable. Style is about being yourself.", author: "Oscar de la Renta" },
+  { text: "Dressing is a way of life.", author: "Yves Saint Laurent" }
+];
+
 /* ========================================================
    CANVAS HELPER FUNCTIONS FOR BACKGROUND REMOVAL
    ======================================================== */
@@ -183,6 +205,10 @@ export default function Upload() {
   const [originalUrl, setOriginalUrl] = useState(null);
   const [bgRemovedBlob, setBgRemovedBlob] = useState(null);
   const [bgRemovedUrl, setBgRemovedUrl] = useState(null);
+  const [scannedItem, setScannedItem] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [activeQuote, setActiveQuote] = useState(null);
+  const [quotesShownCount, setQuotesShownCount] = useState(1);
 
   // Background removal settings
   const [autoRemove, setAutoRemove] = useState(true);
@@ -190,15 +216,6 @@ export default function Upload() {
   const [keyColor, setKeyColor] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [samplingMode, setSamplingMode] = useState(false);
-
-  // Zyntra Web Finder states
-  const [finderQuery, setFinderQuery] = useState('');
-  const [finderResults, setFinderResults] = useState([]);
-  const [finderScanning, setFinderScanning] = useState(false);
-  const [permissionRequested, setPermissionRequested] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [selectedFinderId, setSelectedFinderId] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
@@ -218,14 +235,6 @@ export default function Upload() {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Sync finderQuery when name changes (for ease of search)
-  useEffect(() => {
-    if (formData.name && !finderQuery) {
-      setFinderQuery(formData.name);
-    }
-  }, [formData.name]);
-
   // Trigger background removal on original image changes
   useEffect(() => {
     if (!originalUrl || !autoRemove) {
@@ -256,8 +265,33 @@ export default function Upload() {
       }
     }, 300); // Debounce slider inputs
 
-    return () => clearTimeout(timer);
   }, [originalUrl, keyColor, tolerance, autoRemove]);
+
+  // Auto-cycle fashion quotes during active upload loading stage (max 2 quotes, slower 3s interval)
+  useEffect(() => {
+    if (!showModal || scannedItem || quotesShownCount >= 2) return;
+    
+    const interval = setInterval(() => {
+      setQuotesShownCount((prev) => {
+        if (prev >= 2) {
+          clearInterval(interval);
+          return prev;
+        }
+        
+        setActiveQuote((prevQuote) => {
+          let newQuote = prevQuote;
+          while (!newQuote || newQuote.text === prevQuote?.text) {
+            newQuote = FASHION_QUOTES[Math.floor(Math.random() * FASHION_QUOTES.length)];
+          }
+          return newQuote;
+        });
+        
+        return prev + 1;
+      });
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [showModal, scannedItem, quotesShownCount]);
 
   const handleFile = (selectedFile) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -272,78 +306,8 @@ export default function Upload() {
       setBgRemovedBlob(null);
       setBgRemovedUrl(null);
       setSamplingMode(false);
-      setSelectedFinderId(null);
     } else {
       error('Please select a valid image file');
-    }
-  };
-
-  const handleSearchWebClick = (e) => {
-    e.preventDefault();
-    if (!finderQuery.trim()) {
-      return error('Please type a search query first');
-    }
-    setPermissionRequested(true);
-  };
-
-  const handleConfirmSearch = async () => {
-    setPermissionRequested(false);
-    setPermissionGranted(true);
-    setFinderScanning(true);
-    setFinderResults([]);
-    setSelectedFinderId(null);
-
-    const query = finderQuery.trim();
-    const category = formData.category || 'tops';
-
-    try {
-      const res = await imageSearchAPI.search(query, category);
-      const results = res.data?.results || [];
-
-      if (results.length === 0) {
-        error('No results found. Try a different search term.');
-      } else {
-        setFinderResults(results);
-        success(`Found ${results.length} matching items for "${query}"!`);
-      }
-    } catch (err) {
-      console.error('Web Finder search failed:', err);
-      error('Search failed. Check your connection and try again.');
-    } finally {
-      setFinderScanning(false);
-    }
-  };
-
-  const handleSelectCatalogItem = async (item) => {
-    try {
-      setProcessing(true);
-      const response = await fetch(item.url);
-      const blob = await response.blob();
-      const file = new File([blob], `${item.title.toLowerCase().replace(/\s+/g, '-')}-catalog.jpg`, { type: 'image/jpeg' });
-      
-      setOriginalFile(file);
-      const localUrl = URL.createObjectURL(file);
-      setOriginalUrl(localUrl);
-      
-      setFormData(prev => ({
-        ...prev,
-        name: item.title,
-        brand: item.brand,
-      }));
-
-      setAutoRemove(true);
-      setTolerance(32);
-      
-      setBgRemovedBlob(null);
-      setBgRemovedUrl(null);
-      setKeyColor(null);
-      setSelectedFinderId(item.id);
-      success(`Successfully fetched transparent catalog photo for ${item.title}!`);
-    } catch (err) {
-      console.error('Failed to fetch catalog image:', err);
-      error('Web fetch failed or was blocked. Using local preview.');
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -431,6 +395,18 @@ export default function Upload() {
     if (!formData.name) return error('Please provide a name');
 
     setLoading(true);
+    
+    // Select and show a random fashion quote instantly (guaranteed to be different than previous!)
+    let newQuote = activeQuote;
+    while (!newQuote || newQuote.text === activeQuote?.text) {
+      newQuote = FASHION_QUOTES[Math.floor(Math.random() * FASHION_QUOTES.length)];
+    }
+    setActiveQuote(newQuote);
+    setQuotesShownCount(1); // Reset quote counter for new upload
+    setShowModal(true);
+    setScannedItem(null); // Clear previous if any
+
+    const startTime = Date.now();
     const data = new FormData();
     
     // Choose between processed transparent png blob or original file
@@ -450,16 +426,40 @@ export default function Upload() {
     data.append('tags', JSON.stringify(tags));
 
     try {
-      await clothingAPI.upload(data);
+      const response = await clothingAPI.upload(data);
+      const clothing = response.data?.clothing;
+      
       success('Item added to your wardrobe successfully!');
-      navigate('/dashboard');
+      
+      if (clothing) {
+        setScannedItem(clothing);
+        // Wait 300ms so they see a brief flash of the Closet AI scanned details snappily
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 300);
+      } else {
+        setShowModal(false);
+        navigate('/dashboard');
+      }
     } catch (err) {
+      setShowModal(false); // Hide modal so user is not stuck on crash
       error(err.response?.data?.message || 'Failed to upload item');
       setLoading(false);
     }
   };
 
-  const currentPreviewSrc = autoRemove && bgRemovedUrl ? bgRemovedUrl : originalUrl;
+  const badgeItemStyle = {
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px',
+    padding: '12px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    minWidth: '120px'
+  };
+
+  const currentPreviewSrc = (autoRemove && bgRemovedUrl) ? bgRemovedUrl : originalUrl;
 
   return (
     <div className="main-content" id="upload-page">
@@ -468,6 +468,93 @@ export default function Upload() {
           <h1 className="dashboard-title">Add to Wardrobe</h1>
           <p className="dashboard-subtitle">Digitize a new piece of clothing with visual adjustments</p>
         </div>
+
+        {/* Upload Guidelines Card */}
+        <div className="glass-card animate-fade-in" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: 'var(--accent-violet-light)', fontSize: '0.95rem' }}>💡 Styling Tips for Best AI Scan</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+            <div>✔ <strong>Lay clothing flat</strong> to prevent shadows.</div>
+            <div>✔ <strong>Ensure full visibility</strong> (avoid crops).</div>
+            <div>✔ <strong>Use bright lighting</strong> for color analysis.</div>
+            <div>✔ <strong>Avoid folds/wrinkles</strong> for clean patterns.</div>
+            <div>✔ <strong>Plain background</strong> preferred for outline detection.</div>
+          </div>
+        </div>
+
+        {/* AI Scan Summary Box (Rendered as Modal to fix Cumulative Layout Shift and enhance SEO) */}
+        {showModal && (
+          <div className="modal-overlay tryon-modal animate-fade-in" style={{ zIndex: 1000 }}>
+            {!scannedItem ? (
+              /* STAGE 1: Inspirational Quote Loading Panel */
+              <div className="modal-content glass-card animate-slide-up" style={{ maxWidth: '550px', padding: '40px', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.3)', background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.96) 0%, rgba(10, 12, 20, 0.99) 100%)', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+                <div className="quote-loader-circle" style={{ marginBottom: '24px' }}>
+                  <div className="quote-loader-spin" />
+                  <span style={{ fontSize: '2rem', zIndex: 2 }}>✨</span>
+                </div>
+                
+                <div className="quote-body" style={{ margin: '20px 0' }}>
+                  <span className="quote-icon" style={{ fontSize: '3rem', color: 'rgba(139, 92, 246, 0.4)', display: 'block', height: '30px', lineHeight: '1' }}>“</span>
+                  <p className="quote-text font-heading animate-fade-in" style={{ fontSize: '1.05rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.9)', margin: '12px 0', fontStyle: 'italic', fontWeight: 600 }}>
+                    {activeQuote?.text}
+                  </p>
+                  <span className="quote-author" style={{ fontSize: '0.813rem', color: 'var(--accent-violet-light)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    — {activeQuote?.author}
+                  </span>
+                </div>
+
+                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.813rem', margin: '20px 0 0 0' }}>
+                  🧠 Digitizing and analyzing your fashion items in the background...
+                </p>
+              </div>
+            ) : (
+              /* STAGE 2: Scanned Fashion Metrics Panel (Digitization Complete) */
+              <div className="modal-content glass-card animate-slide-up" style={{ maxWidth: '600px', padding: '40px', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.3)', background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.96) 0%, rgba(10, 12, 20, 0.99) 100%)', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '20px' }}>✨</div>
+                <h3 className="font-heading" style={{ color: 'var(--accent-violet-light)', marginBottom: '8px', fontSize: '1.5rem', fontWeight: 800 }}>Closet AI Digitization Complete!</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.938rem', marginBottom: '28px' }}>Zyntra vision engine successfully scanned and cataloged your garment.</p>
+                
+                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '28px' }}>
+                  <div style={badgeItemStyle}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Aesthetic</span>
+                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.aesthetic}</strong>
+                  </div>
+
+                  {!['shoes', 'accessories'].includes(scannedItem.category) && (
+                    <>
+                      <div style={badgeItemStyle}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pattern</span>
+                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.pattern}</strong>
+                      </div>
+                      <div style={badgeItemStyle}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fit</span>
+                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.fit}</strong>
+                      </div>
+                    </>
+                  )}
+
+                  <div style={badgeItemStyle}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Upload Quality</span>
+                    <strong style={{ color: scannedItem.uploadQuality === 'Good' ? '#10b981' : '#f59e0b', fontSize: '1rem' }}>{scannedItem.uploadQuality}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/dashboard')}
+                    style={{ minWidth: '180px' }}
+                  >
+                    Go to Wardrobe
+                  </button>
+                  <p style={{ color: 'var(--text-tertiary)', fontSize: '0.813rem', fontStyle: 'italic', margin: 0 }}>
+                    Automatically redirecting in a few seconds...
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="upload-container">
           {/* Left Column: Image Upload & Background Editor */}
@@ -522,73 +609,6 @@ export default function Upload() {
               )}
             </div>
 
-
-
-            {/* Zyntra Web Finder Assistant */}
-            <div className="web-finder-panel glass-card" style={{ marginTop: '20px', marginBottom: '20px' }}>
-              <div className="web-finder-banner">
-                <span className="web-finder-banner-icon">🔍</span>
-                <div className="web-finder-banner-text">
-                  <h4 className="font-heading">Zyntra Web Finder</h4>
-                  <p>Photo quality low? Fetch transparent catalog photos of your item directly from the web!</p>
-                </div>
-              </div>
-
-              <div className="web-finder-search-row">
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Enter brand or description (e.g. Levi's Indigo Jeans)"
-                  value={finderQuery}
-                  onChange={(e) => setFinderQuery(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleSearchWebClick}
-                  disabled={finderScanning}
-                  style={{ minWidth: '100px' }}
-                >
-                  Search Web
-                </button>
-              </div>
-
-              {finderScanning && (
-                <div className="web-finder-scanning">
-                  <div className="scanning-ring-container">
-                    <div className="scanning-ring" />
-                    <div className="scanning-glow" />
-                  </div>
-                  <p className="font-heading" style={{ fontSize: '0.813rem', color: 'var(--text-secondary)' }}>
-                    Scanning web catalogs for "{finderQuery}"...
-                  </p>
-                </div>
-              )}
-
-              {!finderScanning && finderResults.length > 0 && (
-                <div className="web-finder-results-grid animate-slide-up">
-                  {finderResults.map((item) => {
-                    const isSelected = selectedFinderId === item.id;
-                    return (
-                      <div
-                        key={item.id}
-                        className={`web-finder-item-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectCatalogItem(item)}
-                      >
-                        {isSelected && <div className="web-finder-select-badge">✓</div>}
-                        <div className="web-finder-item-img-container">
-                          <img src={item.url} alt={item.title} className="web-finder-item-img" />
-                        </div>
-                        <div className="web-finder-item-footer">
-                          <span className="web-finder-item-title">{item.title}</span>
-                          <span className="web-finder-item-brand">{item.brand}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
 
             <div className="upload-info-box">
               <h4>✨ Smart Closet Power</h4>
@@ -746,40 +766,6 @@ export default function Upload() {
           </form>
         </div>
       </div>
-
-      {/* Zyntra Web Finder Permission Dialog */}
-      {permissionRequested && (
-        <div className="permission-modal-overlay animate-fade-in" onClick={() => setPermissionRequested(false)}>
-          <div className="permission-modal-content glass-card animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="permission-modal-icon-circle">🌐</div>
-            <h3 className="font-heading">Web Search Permission</h3>
-            <p>
-              Zyntra would like to connect to web product search indexers to look up clean, high-resolution catalog photos matching <strong>"{finderQuery}"</strong>. 
-              <br /><br />
-              Do you authorize Zyntra to query catalog indexers?
-            </p>
-            <div className="permission-modal-buttons">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setPermissionRequested(false);
-                  error('Search permission denied.');
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleConfirmSearch}
-              >
-                Authorize & Search
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

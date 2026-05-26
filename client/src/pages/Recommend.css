@@ -592,3 +592,218 @@
   }
 }
 
+/* ========================================================
+   CLOSET AI ADVANCED STYLING ADDITIONS
+   ======================================================== */
+
+/* Closet AI Advisor Chat Bubble */
+.closet-ai-advisor {
+  padding: 24px;
+  background: var(--gradient-card-active, linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.02) 100%));
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1), var(--shadow-inset);
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.closet-ai-advisor::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -10%;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.advisor-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.advisor-avatar-container {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+.advisor-avatar-glow {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  filter: blur(8px);
+  opacity: 0.65;
+  animation: pulse-glow 3s ease-in-out infinite alternate;
+}
+
+.advisor-avatar-emoji {
+  font-size: 1.5rem;
+  z-index: 2;
+  animation: float-avatar 4s ease-in-out infinite alternate;
+}
+
+@keyframes float-avatar {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-3px) scale(1.05); }
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(0.95); opacity: 0.4; }
+  100% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.advisor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.advisor-tag {
+  font-size: 0.688rem;
+  font-weight: 700;
+  color: var(--accent-violet-light);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.advisor-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.advisor-content {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.advisor-text {
+  font-size: 0.938rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-line;
+  margin: 0;
+}
+
+/* Redesigned Outfit Item Card list */
+.rec-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+  overflow: visible;
+  padding-bottom: 4px;
+}
+
+.rec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0; /* allows scaling */
+  background: rgba(255, 255, 255, 0.015) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 12px !important;
+  transition: all var(--transition-base);
+  height: auto !important;
+}
+
+.rec-item:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: var(--border-medium) !important;
+  transform: translateY(-2px);
+}
+
+.rec-item-label {
+  font-size: 0.688rem !important;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.rec-item-img-wrap {
+  width: 100% !important;
+  aspect-ratio: 3/4 !important;
+  height: auto !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--bg-tertiary) !important;
+  border: 2px solid var(--border-subtle) !important;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rec-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.rec-item-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-item-brand {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-item-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.meta-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.meta-tag.aesthetic {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-violet-light);
+}
+
+.meta-tag.fit {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.meta-tag.pattern {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+

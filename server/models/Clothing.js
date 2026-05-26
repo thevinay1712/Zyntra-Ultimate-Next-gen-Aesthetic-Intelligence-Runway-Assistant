@@ -55,6 +55,26 @@ const clothingSchema = new mongoose.Schema({
     default: 0,
   },
   lastWorn: Date,
+  uploadQuality: {
+    type: String,
+    enum: ['Good', 'Medium', 'Bad'],
+    default: 'Good'
+  },
+  aesthetic: {
+    type: String,
+    enum: ['Streetwear', 'Casual', 'Formal', 'Minimal', 'Activewear'],
+    default: 'Casual'
+  },
+  pattern: {
+    type: String,
+    enum: ['Solid', 'Striped', 'Graphic', 'Patterned'],
+    default: 'Solid'
+  },
+  fit: {
+    type: String,
+    enum: ['Loose', 'Slim', 'Oversized', 'Regular'],
+    default: 'Regular'
+  },
 }, {
   timestamps: true,
 });
