@@ -817,5 +817,27 @@
 .permission-modal-buttons button {
   flex: 1;
 }
+/* ========================================================
+   QUOTE LOADING MODAL ANIMATIONS
+   ======================================================== */
+.quote-loader-circle {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
 
-
+.quote-loader-spin {
+  position: absolute;
+  inset: -4px;
+  border: 3px solid transparent;
+  border-top-color: var(--accent-violet-light);
+  border-bottom-color: var(--accent-violet);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}

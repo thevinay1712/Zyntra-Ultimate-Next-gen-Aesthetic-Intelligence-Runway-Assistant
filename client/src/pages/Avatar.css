@@ -525,3 +525,13 @@
   100% { left: 100%; }
 }
 
+/* Avatar Coming Soon Upgrades */
+.avatar-upgrade-glow-ring {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  animation: spin 10s linear infinite;
+  pointer-events: none;
+}
+

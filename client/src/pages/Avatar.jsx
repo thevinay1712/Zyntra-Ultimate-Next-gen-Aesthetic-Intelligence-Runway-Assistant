@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import './Avatar.css';
 
@@ -55,6 +56,10 @@ export default function Avatar() {
   const [rotation, setRotation] = useState(0);
   const [autoRotate, setAutoRotate] = useState(false);
   const { success, error } = useToast();
+  const navigate = useNavigate();
+  const [interested, setInterested] = useState(() => {
+    return localStorage.getItem('zyntra_avatar_interest') === 'true';
+  });
 
   // Webcam camera scanner states & refs
   const [cameraActive, setCameraActive] = useState(false);
@@ -242,9 +247,177 @@ export default function Avatar() {
     success('Avatar Randomized!');
   };
 
+  const handleInterestClick = () => {
+    if (interested) return;
+    setInterested(true);
+    localStorage.setItem('zyntra_avatar_interest', 'true');
+    success("Thank you for your feedback! Your interest in the Virtual Try-On feature has been recorded. 👍");
+  };
+
   const activeSkinColor = SKIN_TONES.find((s) => s.id === settings.skin)?.color || '#eca786';
   const activeHairColor = HAIR_COLORS.find((c) => c.id === settings.hairColor)?.color || '#1a1a1a';
   const { gender, skin, hair, hairColor, expression } = settings;
+
+  // Render Premium Glassmorphic Coming Soon View (Underlying 800 lines of original avatar code completely preserved!)
+  return (
+    <div className="main-content" id="avatar-page">
+      <div className="container max-w-2xl animate-fade-in" style={{ marginTop: '24px' }}>
+        
+        {/* Header */}
+        <div className="dashboard-header animate-fade-in" style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h1 className="dashboard-title" style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff 30%, rgba(255,255,255,0.7) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+            Identity Studio
+          </h1>
+          <p className="dashboard-subtitle" style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', margin: '8px 0 0 0' }}>
+            Build your custom stylist profile and visual identity
+          </p>
+        </div>
+
+        {/* Stunning Premium Coming Soon Card */}
+        <div className="glass-card animate-slide-up" style={{
+          padding: '48px 32px',
+          borderRadius: '24px',
+          border: '1px solid rgba(139, 92, 246, 0.25)',
+          background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.7) 0%, rgba(10, 12, 20, 0.85) 100%)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.4), 0 0 40px rgba(139, 92, 246, 0.1)',
+          backdropFilter: 'blur(20px)',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          
+          {/* Top Decorative Lights */}
+          <div style={{
+            position: 'absolute',
+            top: '-50px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '200px',
+            height: '100px',
+            background: 'radial-gradient(ellipse, rgba(139, 92, 246, 0.2) 0%, transparent 70%)',
+            pointerEvents: 'none'
+          }} />
+
+          {/* Animated Glowing Orb / Symbol */}
+          <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: '32px' }}>
+            <div className="avatar-upgrade-glow-ring" />
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)',
+              border: '1px solid rgba(139, 92, 246, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 30px rgba(139, 92, 246, 0.25)',
+              zIndex: 2
+            }}>
+              <svg viewBox="0 0 24 24" className="icon icon-lg animate-pulse" style={{ color: 'var(--accent-violet-light)', width: '32px', height: '32px' }}>
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Main Info */}
+          <h3 className="font-heading" style={{ color: 'var(--accent-violet-light)', fontSize: '1.75rem', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.01em' }}>
+            Future Upgrades Coming Soon
+          </h3>
+          
+          <div style={{
+            display: 'inline-block',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            background: 'rgba(139, 92, 246, 0.12)',
+            border: '1px solid rgba(139, 92, 246, 0.25)',
+            color: 'var(--accent-violet-light)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '24px'
+          }}>
+            🚀 Virtual Try-On Room
+          </div>
+
+          <p style={{
+            fontSize: '0.95rem',
+            lineHeight: '1.6',
+            color: 'rgba(255, 255, 255, 0.8)',
+            maxWidth: '480px',
+            margin: '0 auto 36px',
+            fontWeight: 400
+          }}>
+            We are currently hard at work designing the next generation of avatar try-on technology. Your personalized 3D visual identity studio and interactive fitting room will arrive in a future system upgrade!
+          </p>
+
+          {/* Bulleted Planned Upgrades in a elegant grid */}
+          <div style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            maxWidth: '480px',
+            margin: '0 auto 36px',
+            textAlign: 'left',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px 24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Real-time 3D Pose Fitting
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> AI Fabric Texture Mapping
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Augmented Reality Try-On
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Multi-garment Layering
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="btn btn-primary"
+              style={{ minWidth: '180px', padding: '12px 28px', fontSize: '0.9rem', fontWeight: 600 }}
+            >
+              Go back to Wardrobe
+            </button>
+            <button
+              onClick={handleInterestClick}
+              className={`btn ${interested ? 'btn-primary animate-pulse-glow' : 'btn-secondary'}`}
+              style={{ 
+                minWidth: '180px', 
+                padding: '12px 28px', 
+                fontSize: '0.9rem', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: interested ? 'linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-pink) 100%)' : undefined,
+                borderColor: interested ? 'rgba(139, 92, 246, 0.4)' : undefined,
+                color: interested ? '#fff' : undefined,
+                transition: 'all 0.3s ease'
+              }}
+              disabled={interested}
+            >
+              <span>{interested ? 'Voted' : 'Interested'}</span>
+              <svg viewBox="0 0 24 24" fill={interested ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+              </svg>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  );
 
   return (
     <div className="main-content" id="avatar-page">
