@@ -75,6 +75,10 @@ const clothingSchema = new mongoose.Schema({
     enum: ['Loose', 'Slim', 'Oversized', 'Regular'],
     default: 'Regular'
   },
+  styleVector: {
+    type: [Number],
+    default: []
+  },
 }, {
   timestamps: true,
 });

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -27,6 +27,8 @@ function PublicRoute({ children }) {
 
 function AppContent() {
   const { user } = useAuth();
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   return (
     <>
@@ -41,6 +43,11 @@ function AppContent() {
         <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
         <Route path="/avatar" element={<ProtectedRoute><Avatar /></ProtectedRoute>} />
       </Routes>
+      {!isLandingPage && (
+        <footer className="app-footer">
+          © 2026 Zyntra. Built with ❤️ by Vinay Sinnur
+        </footer>
+      )}
       <Toast />
     </>
   );

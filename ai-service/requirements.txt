@@ -5,3 +5,5 @@ rembg>=2.0.62
 pillow>=10.2.0
 opencv-python-headless>=4.9.0.80
 numpy>=1.26.4
+torch --extra-index-url https://download.pytorch.org/whl/cpu
+transformers

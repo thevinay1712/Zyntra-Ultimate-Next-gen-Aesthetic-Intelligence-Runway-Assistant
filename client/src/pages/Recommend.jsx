@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { recommendAPI, clothingAPI } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import './Recommend.css';
@@ -495,6 +496,13 @@ export default function Recommend() {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // LLM Critique & Visual Similarity Matchmaker states
+  const [stylistCritique, setStylistCritique] = useState('');
+  const [critiqueLoading, setCritiqueLoading] = useState(false);
+  const [selectedSimilarityItem, setSelectedSimilarityItem] = useState(null);
+  const [similarItems, setSimilarItems] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
   
   // Occasion & Season states
   const [params, setParams] = useState({ occasion: 'casual', season: '' });
@@ -525,6 +533,10 @@ export default function Recommend() {
   // Wardrobe loaded from server
   const [clothes, setClothes] = useState([]);
   const [fetchingClothes, setFetchingClothes] = useState(false);
+
+  const topsCount = clothes.filter((c) => c.category === 'tops' || c.category === 'top').length;
+  const bottomsCount = clothes.filter((c) => c.category === 'bottoms' || c.category === 'bottom').length;
+  const isWardrobeLow = clothes.length > 0 && (topsCount <= 1 || bottomsCount <= 1 || clothes.length < 5);
 
   const { success, error } = useToast();
 
@@ -823,26 +835,31 @@ export default function Recommend() {
   const generateAIAdviceText = (topOutfit) => {
     if (!topOutfit) return '';
 
-    // const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
-    // const currentCondition = simulatedWeather ? WEATHER_MOCK[simulatedWeather].condition : weather.condition;
     const currentTemp = weather.temp; // Rely strictly on real-time weather
     const currentCondition = weather.condition;
     const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
 
     // 1. Core Occasion Setup
     const occasionTitle = params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1);
-    
+    const occasionNouns = {
+      casual: 'relaxed cafe hangout with friends',
+      formal: 'professional corporate or formal meeting',
+      sport: 'high-energy workout or active training session',
+      party: 'vibrant night out or festive celebration'
+    };
+    const occasionNoun = occasionNouns[params.occasion] || 'special outing';
+
     // 2. Weather Specific Commentary
     let weatherAdvice = '';
     if (currentTemp < 10) {
-      weatherAdvice = `❄️ Freezing winter conditions detected (${currentTemp}°C). Heavy thermal insulation is active. `;
+      weatherAdvice = `❄️ Cold winter conditions detected (${currentTemp}°C) in ${locationName}. Heavy thermal protection is highly optimized. `;
       if (outerwear) {
-        weatherAdvice += `The ${outerwear.name} acts as your primary thermal shield, styled beautifully over the ${top.name}. `;
+        weatherAdvice += `The ${outerwear.fit} ${outerwear.name} acts as your primary thermal shield, styled beautifully over the ${top.name}. `;
       } else {
         weatherAdvice += `Please bundle up! Your digital wardrobe is currently missing a warm coat or jacket—consider scanning one soon to complete cold-weather layering guidelines. `;
       }
     } else if (currentTemp >= 10 && currentTemp < 17) {
-      weatherAdvice = `🍂 A brisk, chilly atmosphere (${currentTemp}°C). `;
+      weatherAdvice = `🍂 A brisk, chilly atmosphere (${currentTemp}°C) in ${locationName}. `;
       if (outerwear) {
         weatherAdvice += `I suggest wearing your ${outerwear.name} styled open to create a crisp, modern multi-layered silhouette with your ${top.name}. `;
       } else {
@@ -854,51 +871,31 @@ export default function Recommend() {
       weatherAdvice = `☀️ Warm, high-temperature conditions (${currentTemp}°C). Optimizing for maximum breathability. The lightweight structure of the ${top.name} keeps you cool and collected under the sun. `;
     }
 
-    // 3. Condition-based protective additions
     if (currentCondition.includes('🌧️') || currentCondition.includes('Rainy') || currentCondition.includes('Showers')) {
       weatherAdvice += `🌧️ Rain protection protocol is active: ensure your layers are water-resistant to keep the silhouette clean and dry. `;
     } else if (currentCondition.includes('💨') || currentCondition.includes('Windy') || currentCondition.includes('Gale')) {
       weatherAdvice += `💨 Gale-defense active: the outer layer acts as an effective windbreak to seal in warmth. `;
     }
 
-    // 4. Aesthetic / Style Synergy Matrix
-    let styleSynergy = '';
+    // 3. Dynamic Styling Angle / Synergy
     const topStyle = top.aesthetic || 'Casual';
     const bottomStyle = bottom.aesthetic || 'Casual';
+    let styleSynergy = `For your ${occasionNoun}, pairing your ${top.name} with the ${bottom.name} is a highly deliberate styling coordinate. `;
     
-    const styleCombinations = {
-      'Minimalist-Minimalist': 'สะอาดตาและประณีต (Ultra-Cohesive). The clean lines of the minimalist silhouette project absolute contemporary sophistication, forming an effortless, high-contrast visual balance.',
-      'Streetwear-Streetwear': 'Urban style synergy. The relaxed streetwear contour brings a confident, effortlessly cool energy that is highly synchronized and expressive.',
-      'Activewear-Activewear': 'High-performance symmetry. Optimized contours maximize range of motion while maintaining a highly athletic, modern, and cohesive look.',
-      'Formal-Formal': 'Chiseled structural design. Projects absolute professionalism and tailored elegance, creating a sharp, commanding presence.',
-      'Casual-Casual': 'Relaxed daily harmony. Emphasizes absolute ease and effortless comfort, perfect for daily hangouts and casual encounters.'
-    };
-
-    const key = `${topStyle}-${bottomStyle}`;
-    if (styleCombinations[key]) {
-      styleSynergy = styleCombinations[key];
-    } else if (topStyle === bottomStyle) {
-      styleSynergy = `Intentional ${topStyle} alignment. The items coordinate seamlessly under a shared design language, creating a highly unified aesthetic.`;
+    if (topStyle === bottomStyle) {
+      styleSynergy += `This creates a highly unified, cohesive ${topStyle} silhouette. The ${top.fit} cut of the top establishes a beautiful aesthetic flow with the ${bottom.fit} drape of the bottom. `;
     } else {
-      // Cross-aesthetic styling
-      styleSynergy = `Balanced high-low styling. Blending a ${topStyle} top with a ${bottomStyle} bottom creates an appealing, multi-dimensional visual flow that is both comfortable and stylishly relaxed.`;
+      styleSynergy += `This establishes a balanced, high-low styling aesthetic that blends the ${topStyle} character of the top with the ${bottomStyle} outline of the bottom. The ${top.fit} shape of the top contrasts appealingly with the ${bottom.fit} design of the bottom, projecting absolute fashion confidence. `;
     }
+    
+    styleSynergy += `Having a ${top.pattern} pattern matched with a ${bottom.pattern} structure keeps the visual detail focused and beautifully balanced.`;
 
-    // 5. Color Theory Psychology
+    // 4. Color Theory Psychology
     let colorPsychology = '';
     const colorNote = topOutfit.colorNote;
-    
-    if (colorNote.includes('Complementary')) {
-      colorPsychology = `Complementary color dynamics are active. The bold contrast between the ${top.color?.primary} top and the ${bottom.color?.primary} bottom creates an eye-catching, high-energy focal point that projects absolute style confidence.`;
-    } else if (colorNote.includes('Analogous')) {
-      colorPsychology = `Analogous color theory in play. The smooth, harmonious transition between the adjacent ${top.color?.primary} and ${bottom.color?.primary} hues creates a sophisticated, calming visual flow that is highly pleasing to the eye.`;
-    } else if (colorNote.includes('Neutral')) {
-      colorPsychology = `Refined neutral palette. Utilizing timeless, understated tones projects high-end luxury and absolute versatility, allowing the visual contours of the garments to take center stage.`;
-    } else {
-      colorPsychology = `Dynamic color mixing. The contrast between the ${top.color?.primary} and ${bottom.color?.primary} elements creates a crisp, high-contrast style statement.`;
-    }
+    colorPsychology = `The combination of the ${top.color?.primary || 'neutral'} top and the ${bottom.color?.primary || 'neutral'} bottom establishes a beautiful visual balance. Under the ${currentCondition} in ${locationName}, this ${colorNote.toLowerCase()} projects an elegant, highly customized aesthetic statement.`;
 
-    // 6. Finishing details (Shoes & Accessories)
+    // 5. Finishing details (Shoes & Accessories)
     let details = '';
     if (shoes) {
       details += `For footwear, sliding into the ${shoes.name} anchors the outfit beautifully. `;
@@ -911,7 +908,7 @@ export default function Recommend() {
     }
 
     // Combine into a master generative-styled personal review
-    return `Hello there! I am your Closet AI Stylist. For your ${occasionTitle} outing today in your local region (${locationName}), I have formulated a premium, mathematically optimized style recommendation from your digital wardrobe.
+    return `Hello there! I am your Zyntra AI Stylist. For your ${occasionTitle} outing today in your local region (${locationName}), I have formulated a premium, mathematically optimized style recommendation from your digital wardrobe.
 
 ✨ STYLING ANGLE:
 ${styleSynergy}
@@ -974,6 +971,78 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
     };
     fetchClothes();
   }, []);
+
+  // Reset similarity states when closing try-on modal
+  useEffect(() => {
+    if (!tryOnOutfit) {
+      setSelectedSimilarityItem(null);
+      setSimilarItems([]);
+    }
+  }, [tryOnOutfit]);
+
+  const fetchLLMCritique = async (topOutfit) => {
+    if (!topOutfit) return;
+    setCritiqueLoading(true);
+    setStylistCritique('');
+    try {
+      const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
+      const response = await recommendAPI.getStylistCritique({
+        top,
+        bottom,
+        outerwear,
+        shoes,
+        accessory,
+        temp: weather.temp,
+        condition: weather.condition,
+        occasion: params.occasion
+      });
+      if (response.data && response.data.critique) {
+        setStylistCritique(response.data.critique);
+      } else {
+        throw new Error('No critique returned');
+      }
+    } catch (err) {
+      console.warn('Hugging Face LLM Stylist failed/offline, fallback active:', err.message);
+      setStylistCritique(generateAIAdviceText(topOutfit));
+    } finally {
+      setCritiqueLoading(false);
+    }
+  };
+
+  const fetchSimilarItems = async (item) => {
+    if (!item) return;
+    setSelectedSimilarityItem(item);
+    setSimilarLoading(true);
+    setSimilarItems([]);
+    try {
+      const response = await clothingAPI.getSimilar(item._id);
+      if (response.data && response.data.similar) {
+        setSimilarItems(response.data.similar);
+      }
+    } catch (err) {
+      console.error('Failed to fetch similar items:', err);
+      error('Failed to find similar visual style pairs.');
+    } finally {
+      setSimilarLoading(false);
+    }
+  };
+
+  const handleSwapItem = (slot, newItem) => {
+    if (!tryOnOutfit || !newItem) return;
+    
+    // Normalize DB categories to slot names
+    let slotName = slot;
+    if (slot === 'tops') slotName = 'top';
+    if (slot === 'bottoms') slotName = 'bottom';
+    
+    const updatedOutfit = {
+      ...tryOnOutfit,
+      [slotName]: newItem
+    };
+    setTryOnOutfit(updatedOutfit);
+    success(`Swapped in ${newItem.name} as your ${slotName}!`);
+    fetchSimilarItems(newItem);
+  };
 
   // Handle auto rotation of try-on model
   useEffect(() => {
@@ -1040,14 +1109,16 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
     setLoading(true);
     setHasSearched(true);
     setTryOnOutfit(null);
+    setStylistCritique('');
 
     // Simulate AI thinking delay for premium feel
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const localRecs = generateLocalRecommendations();
         setRecommendations(localRecs);
         if (localRecs.length > 0) {
           success(`Generated ${localRecs.length} matching suggestions for a ${params.occasion} day!`);
+          fetchLLMCritique(localRecs[0]);
         } else {
           error('Not enough items in your closet to generate styling.');
         }
@@ -1147,6 +1218,20 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
           */}
         </div>
 
+        {isWardrobeLow && (
+          <div className="wardrobe-low-warning-box">
+            <span className="wardrobe-low-warning-icon">⚠️</span>
+            <div className="wardrobe-low-warning-text">
+              <h4 className="wardrobe-low-warning-title">Limited Digital Wardrobe Variety Detected</h4>
+              <p className="wardrobe-low-warning-desc">
+                Your digital wardrobe contains only <strong>{topsCount} Top(s)</strong> and <strong>{bottomsCount} Bottom(s)</strong>.
+                Because of this cold-start state, the Closet AI matchmaking engine is forced to recommend the exact same combination for all purposes.
+                Go to the <Link to="/upload">Upload page</Link> to scan distinct clothing items (like formal blazers, sports jerseys, or casual hoodies) to enable customized, occasion-tailored outfit suggestions! 🚀
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="recommend-controls glass-card animate-slide-up">
           {/* Destination Selection Cards */}
           <div className="control-group">
@@ -1226,9 +1311,20 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                 </div>
               </div>
               <div className="advisor-content">
-                <p className="advisor-text">
-                  {generateAIAdviceText(recommendations[0])}
-                </p>
+                {critiqueLoading ? (
+                  <div className="advisor-loading-wrapper">
+                    <div className="advisor-typing-indicator" style={{ display: 'flex', gap: '6px', margin: '10px 0' }}>
+                      <span style={{ width: '8px', height: '8px', background: 'var(--accent-violet)', borderRadius: '50%', display: 'inline-block' }}></span>
+                      <span style={{ width: '8px', height: '8px', background: 'var(--accent-violet)', borderRadius: '50%', display: 'inline-block' }}></span>
+                      <span style={{ width: '8px', height: '8px', background: 'var(--accent-violet)', borderRadius: '50%', display: 'inline-block' }}></span>
+                    </div>
+                    <p className="advisor-loading-text" style={{ fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Zyntra LLM Stylist drafting review...</p>
+                  </div>
+                ) : (
+                  <p className="advisor-text">
+                    {stylistCritique || generateAIAdviceText(recommendations[0])}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1246,9 +1342,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                       <button
                         className="btn btn-primary btn-sm btn-tryon"
                         onClick={() => {
-                          setTryOnOutfit(rec.items);
-                          setAvatarRotation(0);
-                          setViewMode('front');
+                          success('Avatar Try-On is planned as a future premium upgrade! 🚀');
                         }}
                       >
                         ✨ Try On Avatar
@@ -1310,7 +1404,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
         ) : null}
       </div>
 
-      {/* AVATAR TRY ON MODAL CANVAS (With interactive Fitter tool and Clamped Y-angle rotation) */}
+      {/* AVATAR TRY ON MODAL CANVAS (Disabled as planned future premium upgrade)
       {tryOnOutfit && avatarSettings && (
         <div className="modal-overlay tryon-modal animate-fade-in" onClick={() => setTryOnOutfit(null)}>
           <div className="modal-content glass-card tryon-content animate-slide-up" style={{ maxWidth: '880px' }} onClick={(e) => e.stopPropagation()}>
@@ -1327,7 +1421,6 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
             </div>
 
             <div className="tryon-body">
-              {/* Left Column: Avatar Canvas */}
               <div 
                 className="tryon-canvas-container glass-card"
                 onMouseDown={handleDragStart}
@@ -1347,15 +1440,12 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                   fitSettings={fitSettings}
                 />
 
-                {/* Tactile drag spin badge overlay */}
                 <div className="drag-rotate-badge animate-pulse-glow">
                   🔄 Drag or Swipe to Spin 360°
                 </div>
               </div>
 
-              {/* Right Column: Custom controls */}
               <div className="tryon-controls-panel">
-                {/* View Angle selector to solve paper-doll thickness collapse */}
                 <div className="view-mode-selector">
                   <span className="control-label">Avatar Viewpoint</span>
                   <div className="view-mode-buttons">
@@ -1382,23 +1472,39 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                   </div>
                 </div>
 
-                {/* TAB 1: DRESSED LAYERS LIST */}
                 <div className="layers-tab-content animate-slide-up">
                   <p style={{ fontSize: '0.813rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                    Recommended clothing items aligned on your custom avatar below.
+                    Recommended clothing items aligned on your custom avatar below. Click any layer to find visual style pairs!
                   </p>
 
                   <div className="outfit-layers-checklist">
                     {['top', 'bottom', 'outerwear', 'shoes', 'accessory'].map((slot) => {
                       const item = tryOnOutfit[slot];
+                      const isSelected = selectedSimilarityItem?._id === item?._id;
                       return (
-                        <div key={slot} className="layer-pill">
+                        <div 
+                          key={slot} 
+                          className={`layer-pill ${isSelected ? 'selected' : ''}`}
+                          onClick={() => item && fetchSimilarItems(item)}
+                          style={{ cursor: item ? 'pointer' : 'default' }}
+                        >
                           <span className="layer-slot-name">{slot}</span>
                           {item ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span className="layer-item-name" style={{ color: item.color?.primary || 'inherit' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
+                              <span className="layer-item-name" style={{ color: item.color?.primary || 'inherit', fontWeight: 600 }}>
                                 {item.name}
                               </span>
+                              <button 
+                                type="button" 
+                                className="btn btn-xs btn-ghost btn-find-pairs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetchSimilarItems(item);
+                                }}
+                                style={{ padding: '2px 6px', fontSize: '0.7rem', height: 'auto', background: 'rgba(255, 255, 255, 0.05)' }}
+                              >
+                                🔍 Find Pairs
+                              </button>
                             </div>
                           ) : (
                             <span className="layer-empty">Empty</span>
@@ -1406,6 +1512,94 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                         </div>
                       );
                     })}
+                  </div>
+
+                  {selectedSimilarityItem && (
+                    <div className="similarity-carousel-wrapper animate-slide-up" style={{ marginTop: '20px', padding: '16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <div className="similarity-carousel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span className="similarity-carousel-title" style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                          Aesthetic Pairs for <strong>{selectedSimilarityItem.name}</strong>
+                        </span>
+                        <button 
+                          type="button" 
+                          className="btn btn-icon btn-ghost btn-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSimilarityItem(null);
+                            setSimilarItems([]);
+                          }}
+                          style={{ width: '20px', height: '20px', minHeight: 'auto', padding: 0 }}
+                        >
+                          <IconX />
+                        </button>
+                      </div>
+
+                      {similarLoading ? (
+                        <div className="similarity-loading" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <span className="loader-spinner" style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent-violet)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                          <span>Aligning aesthetic vectors...</span>
+                        </div>
+                      ) : similarItems.length > 0 ? (
+                        <div className="similarity-carousel" style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'thin' }}>
+                          {similarItems.map(({ item, score }) => (
+                            <div key={item._id} className="similarity-card glass-card" style={{ flex: '0 0 130px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
+                              <div className="similarity-card-img-wrap" style={{ width: '100%', height: '80px', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0,0,0,0.2)', border: '1px solid transparent', borderColor: item.color?.primary || 'transparent', padding: '4px' }}>
+                                <DressingItemImage 
+                                  src={`http://localhost:5000${item.imageUrl}`} 
+                                  alt={item.name} 
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              </div>
+                              <div className="similarity-card-meta" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span className="similarity-card-name" style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.name}>{item.name}</span>
+                                <span className="badge badge-accent-green" style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '4px', textAlign: 'center', width: 'fit-content' }}>{score}% Match</span>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-xs btn-swap"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSwapItem(item.category, item);
+                                  }}
+                                  style={{ fontSize: '0.65rem', padding: '4px', height: 'auto', marginTop: '4px' }}
+                                >
+                                  🔄 Swap
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="similarity-empty" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                          No visually similar {selectedSimilarityItem.category} found in your wardrobe yet.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="tryon-critique-section glass-card" style={{ marginTop: '20px', padding: '16px', background: 'rgba(124, 58, 237, 0.03)', borderRadius: '12px', border: '1px solid rgba(124, 58, 237, 0.15)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', marginBottom: '8px' }}>
+                      <span className="control-label" style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-violet-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        🧠 Studio AI Stylist
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-primary"
+                        onClick={() => fetchLLMCritique({ items: tryOnOutfit })}
+                        disabled={critiqueLoading}
+                        style={{ height: 'auto', padding: '4px 10px', fontSize: '0.75rem' }}
+                      >
+                        {critiqueLoading ? '⏳ Drafting...' : '💬 Ask Critique'}
+                      </button>
+                    </div>
+                    {stylistCritique ? (
+                      <div className="tryon-critique-bubble animate-fade-in" style={{ padding: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
+                        <p className="tryon-critique-text" style={{ margin: 0, fontSize: '0.8rem', lineHeight: '1.4', color: 'var(--text-secondary)' }}>{stylistCritique}</p>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        Swap items above to mix your style, then ask Zyntra for a live Llama-3 fashion critique!
+                      </p>
+                    )}
                   </div>
 
                   <div className="rotation-actions-row" style={{ marginTop: '20px' }}>
@@ -1434,6 +1628,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
           </div>
         </div>
       )}
+      */}
     </div>
   );
 }

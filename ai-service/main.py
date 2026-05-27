@@ -4,6 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import cv2
 import numpy as np
+import torch
+from transformers import CLIPProcessor, CLIPModel
+from PIL import Image
+import io
 
 from core.quality import analyze_upload_quality
 from core.segmentation import segment_garment
@@ -19,6 +23,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Lazy-loaded singleton for local CLIP model to preserve RAM/CPU until active upload
+class CLIPModelWrapper:
+    def __init__(self):
+        self.model = None
+        self.processor = None
+        self.device = "cpu"  # Keep CPU-based tensor calculations for maximum compatibility and student hardware
+
+    def load(self):
+        if self.model is None:
+            print("🧠 Loading local clip-vit-base-patch32 model singleton...")
+            self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+            self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+            print("✅ CLIP Model loaded successfully!")
+        return self.model, self.processor
+
+clip_wrapper = CLIPModelWrapper()
 
 @app.get("/health")
 def health_check():
@@ -43,6 +64,7 @@ async def api_analyze_clothing(
     1. Segments the garment (removes background)
     2. Rates image quality (Good | Medium | Bad) based on resolution, blurriness, and border touch boundaries.
     3. Extracts dominant colors, edge pattern configurations, aesthetic classifications, and estimated fits.
+    4. Generates local 512-float CLIP style vectors for 100% cost-free visual similarity searches.
     """
     try:
         contents = await image.read()
@@ -56,9 +78,10 @@ async def api_analyze_clothing(
 
         # 1. Segment garment to isolate foreground clothes
         try:
-            _, _, alpha_mask = segment_garment(contents)
+            segmented_bytes, _, alpha_mask = segment_garment(contents)
         except Exception as e:
             # Fallback if rembg fails (e.g. invalid format or background removal model error)
+            segmented_bytes = contents
             alpha_mask = np.ones(img_bgr.shape[:2], dtype=np.uint8) * 255
             print(f"Rembg segmenter fallback: {e}")
 
@@ -71,6 +94,7 @@ async def api_analyze_clothing(
         pattern = "Solid"
         aesthetic = "Casual"
         fit = "Regular"
+        style_vector = []
 
         if quality != "Bad":
             # Extract dominant colors
@@ -79,6 +103,23 @@ async def api_analyze_clothing(
             pattern = classify_garment_pattern(img_bgr, alpha_mask)
             # Classify style aesthetic & estimated fit
             aesthetic, fit = determine_aesthetic(category, primary_color, pattern)
+            
+            # 4. Generate local L2-Normalized CLIP style vector for cost-free aesthetic searches
+            try:
+                model, processor = clip_wrapper.load()
+                pil_img = Image.open(io.BytesIO(segmented_bytes)).convert("RGB")
+                inputs = processor(images=pil_img, return_tensors="pt")
+                with torch.no_grad():
+                    image_features = model.get_image_features(**inputs)
+                
+                # Apply L2 Normalization so dot product = cosine similarity
+                features_tensor = image_features[0]
+                norm = torch.linalg.norm(features_tensor)
+                normalized_tensor = features_tensor / norm if norm > 0 else features_tensor
+                style_vector = normalized_tensor.tolist()
+            except Exception as clip_err:
+                print(f"CLIP embedding extraction failed, fallback active: {clip_err}")
+                style_vector = []
 
         return JSONResponse(content={
             "success": True,
@@ -91,7 +132,8 @@ async def api_analyze_clothing(
             },
             "pattern": pattern,
             "aesthetic": aesthetic,
-            "fit": fit
+            "fit": fit,
+            "styleVector": style_vector
         })
 
     except HTTPException:

@@ -19,5 +19,20 @@
 /* Main content area when navbar is present */
 .main-content {
   padding-top: 80px;
-  min-height: 100vh;
+  min-height: calc(100vh - 70px); /* Adjust min-height so footer stays at the bottom */
+}
+
+/* Common App Footer */
+.app-footer {
+  text-align: center;
+  padding: 32px 24px;
+  color: var(--text-tertiary);
+  font-size: 0.813rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.025em;
 }

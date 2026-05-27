@@ -87,6 +87,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     let aiPattern = 'Solid';
     let aiAesthetic = 'Casual';
     let aiFit = 'Regular';
+    let aiStyleVector = [];
 
     try {
       console.log('🧠 Querying Zyntra Closet AI service...');
@@ -109,8 +110,9 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
         aiPattern = aiData.pattern;
         aiAesthetic = aiData.aesthetic;
         aiFit = aiData.fit;
+        aiStyleVector = aiData.styleVector || [];
 
-        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}`);
+        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}, VectorLength=${aiStyleVector.length}`);
       } else {
         console.warn('AI Service returned non-ok status:', aiResponse.status);
       }
@@ -157,13 +159,61 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       uploadQuality: aiQuality,
       aesthetic: aiAesthetic,
       pattern: aiPattern,
-      fit: aiFit
+      fit: aiFit,
+      styleVector: aiStyleVector
     });
 
     res.status(201).json({ clothing });
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ message: 'Failed to upload clothing' });
+  }
+});
+
+// GET /api/clothing/:id/similar — Retrieve visually similar clothes using local Cosine Similarity
+router.get('/:id/similar', auth, async (req, res) => {
+  try {
+    const target = await Clothing.findOne({ _id: req.params.id, userId: req.userId });
+    if (!target) {
+      return res.status(404).json({ message: 'Clothing item not found' });
+    }
+
+    if (!target.styleVector || target.styleVector.length === 0) {
+      return res.json({ similar: [] }); // No visual vectors extracted (e.g. uploaded before update or fallback)
+    }
+
+    // Fetch all other items in the wardrobe
+    const allItems = await Clothing.find({ 
+      userId: req.userId, 
+      _id: { $ne: target._id } 
+    });
+
+    const cosineSimilarity = (vecA, vecB) => {
+      if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) return 0.0;
+      let dot = 0.0;
+      for (let i = 0; i < vecA.length; i++) {
+        dot += vecA[i] * vecB[i];
+      }
+      return dot;
+    };
+
+    // Calculate score, sort, and return top 5
+    const similar = allItems
+      .map(item => {
+        const score = cosineSimilarity(target.styleVector, item.styleVector);
+        return {
+          item,
+          score: Math.round(score * 100) // Percentage score
+        };
+      })
+      .filter(entry => entry.score > 0) // Filter out items with no vectors
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    res.json({ similar });
+  } catch (err) {
+    console.error('Similarity search error:', err);
+    res.status(500).json({ message: 'Failed to search similar clothes' });
   }
 });
 
