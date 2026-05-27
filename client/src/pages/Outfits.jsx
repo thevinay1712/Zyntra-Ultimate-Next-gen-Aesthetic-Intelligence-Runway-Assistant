@@ -703,17 +703,7 @@ export default function Outfits() {
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => {
-                    const stored = localStorage.getItem('zyntra_avatar');
-                    setAvatarSettings(stored ? JSON.parse(stored) : {
-                      gender: 'male',
-                      skin: 'olive',
-                      hair: 'messy',
-                      hairColor: 'black',
-                      expression: 'smile'
-                    });
-                    setTryOnActive(true);
-                    setAvatarRotation(0);
-                    setViewMode('front');
+                    success('Avatar Try-On is planned as a future premium upgrade! 🚀');
                   }}
                   disabled={!builderState.top && !builderState.bottom}
                   title="Try this combination on your custom avatar"
@@ -829,26 +819,7 @@ export default function Outfits() {
                           <button
                             className="btn btn-icon btn-ghost btn-trash"
                             onClick={() => {
-                              const stored = localStorage.getItem('zyntra_avatar');
-                              setAvatarSettings(stored ? JSON.parse(stored) : {
-                                gender: 'male',
-                                skin: 'olive',
-                                hair: 'messy',
-                                hairColor: 'black',
-                                expression: 'smile'
-                              });
-                              // Map outfit keys to object format for try on vector
-                              const formatted = {
-                                top: clothes.find(c => c._id === outfit.items.top),
-                                bottom: clothes.find(c => c._id === outfit.items.bottom),
-                                shoes: clothes.find(c => c._id === outfit.items.shoes),
-                                outerwear: clothes.find(c => c._id === outfit.items.outerwear),
-                                accessory: clothes.find(c => c._id === outfit.items.accessory)
-                              };
-                              setBuilderState(formatted);
-                              setTryOnActive(true);
-                              setAvatarRotation(0);
-                              setViewMode('front');
+                              success('Avatar Try-On is planned as a future premium upgrade! 🚀');
                             }}
                             title="Try On Avatar"
                           >
@@ -889,7 +860,7 @@ export default function Outfits() {
         </div>
       </div>
 
-      {/* AVATAR TRY ON MODAL CANVAS (With interactive Fitter tool and Clamped Y-angle rotation) */}
+      {/* AVATAR TRY ON MODAL CANVAS (Disabled as planned future premium upgrade)
       {tryOnActive && avatarSettings && (
         <div className="modal-overlay tryon-modal animate-fade-in" onClick={() => setTryOnActive(false)}>
           <div className="modal-content glass-card tryon-content animate-slide-up" style={{ maxWidth: '880px' }} onClick={(e) => e.stopPropagation()}>
@@ -906,7 +877,6 @@ export default function Outfits() {
             </div>
 
             <div className="tryon-body">
-              {/* Left Column: Avatar Canvas */}
               <div 
                 className="tryon-canvas-container glass-card"
                 onMouseDown={handleDragStart}
@@ -926,15 +896,12 @@ export default function Outfits() {
                   fitSettings={fitSettings}
                 />
 
-                {/* Tactile drag spin badge overlay */}
                 <div className="drag-rotate-badge animate-pulse-glow">
                   🔄 Drag or Swipe to Spin 360°
                 </div>
               </div>
 
-              {/* Right Column: Custom controls */}
               <div className="tryon-controls-panel">
-                {/* View Angle selector to solve paper-doll thickness collapse */}
                 <div className="view-mode-selector">
                   <span className="control-label">Avatar Viewpoint</span>
                   <div className="view-mode-buttons">
@@ -961,7 +928,6 @@ export default function Outfits() {
                   </div>
                 </div>
 
-                {/* TAB 1: DRESSED LAYERS LIST */}
                 <div className="layers-tab-content animate-slide-up">
                   <p style={{ fontSize: '0.813rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                     Recommended clothing items aligned on your custom avatar below.
@@ -1013,6 +979,7 @@ export default function Outfits() {
           </div>
         </div>
       )}
+      */}
     </div>
   );
 }

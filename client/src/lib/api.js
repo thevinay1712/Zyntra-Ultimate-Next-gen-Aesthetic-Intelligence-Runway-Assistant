@@ -45,6 +45,7 @@ export const clothingAPI = {
   getOne: (id) => api.get(`/clothing/${id}`),
   update: (id, data) => api.put(`/clothing/${id}`, data),
   delete: (id) => api.delete(`/clothing/${id}`),
+  getSimilar: (id) => api.get(`/clothing/${id}/similar`),
 };
 
 // Outfits
@@ -57,6 +58,7 @@ export const outfitAPI = {
 // Recommendations
 export const recommendAPI = {
   get: (params) => api.get('/recommend', { params }),
+  getStylistCritique: (data) => api.post('/recommend/stylist-critique', data),
 };
 
 // Image Search (Zyntra Web Finder)

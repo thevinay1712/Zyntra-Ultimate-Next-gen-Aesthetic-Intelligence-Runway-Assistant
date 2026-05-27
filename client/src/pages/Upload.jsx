@@ -182,10 +182,26 @@ const processImageFloodFill = (imageSrc, keyColor, tolerance, feather = 8) => {
         }
       }
 
+      // Analyze border pixels to check if background was cleanly isolated
+      let borderBgCount = 0;
+      let borderTotal = 0;
+      for (let x = 0; x < width; x++) {
+        borderTotal += 2;
+        if (visited[x] === 1) borderBgCount++;
+        if (visited[(height - 1) * width + x] === 1) borderBgCount++;
+      }
+      for (let y = 1; y < height - 1; y++) {
+        borderTotal += 2;
+        if (visited[y * width] === 1) borderBgCount++;
+        if (visited[y * width + (width - 1)] === 1) borderBgCount++;
+      }
+      const borderBgRatio = borderBgCount / borderTotal;
+      const isImperfect = borderBgRatio < 0.82; // Less than 82% of edge pixels flood-filled as bg = splotchy/cluttered
+
       ctx.putImageData(imageData, 0, 0);
       canvas.toBlob((blob) => {
         if (blob) {
-          resolve({ blob, detectedColor });
+          resolve({ blob, detectedColor, isImperfect });
         } else {
           reject(new Error('Canvas blob generation failed'));
         }
@@ -215,6 +231,7 @@ export default function Upload() {
   const [tolerance, setTolerance] = useState(35);
   const [keyColor, setKeyColor] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [isBgRemovalImperfect, setIsBgRemovalImperfect] = useState(false);
   const [samplingMode, setSamplingMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -254,6 +271,7 @@ export default function Upload() {
         
         const newUrl = URL.createObjectURL(result.blob);
         setBgRemovedUrl(newUrl);
+        setIsBgRemovalImperfect(result.isImperfect);
         
         if (!keyColor) {
           setKeyColor(result.detectedColor);
@@ -306,6 +324,7 @@ export default function Upload() {
       setBgRemovedBlob(null);
       setBgRemovedUrl(null);
       setSamplingMode(false);
+      setIsBgRemovalImperfect(false);
     } else {
       error('Please select a valid image file');
     }
@@ -366,7 +385,7 @@ export default function Upload() {
     const rect = imageElementRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-
+ 
     try {
       const color = samplePixelColor(imageElementRef.current, clickX, clickY);
       setKeyColor(color);
@@ -386,6 +405,7 @@ export default function Upload() {
     setBgRemovedUrl(null);
     setKeyColor(null);
     setSamplingMode(false);
+    setIsBgRemovalImperfect(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -393,6 +413,11 @@ export default function Upload() {
     e.preventDefault();
     if (!originalFile) return error('Please select an image');
     if (!formData.name) return error('Please provide a name');
+
+    if (autoRemove && isBgRemovalImperfect) {
+      error('Upload Blocked: The background of your photo was not removed properly. Please re-upload a different photo with a plain, clean background for correct isolation.');
+      return;
+    }
 
     setLoading(true);
     
@@ -463,7 +488,7 @@ export default function Upload() {
 
   return (
     <div className="main-content" id="upload-page">
-      <div className="container max-w-4xl">
+      <div className="container">
         <div className="upload-header animate-fade-in">
           <h1 className="dashboard-title">Add to Wardrobe</h1>
           <p className="dashboard-subtitle">Digitize a new piece of clothing with visual adjustments</p>
@@ -472,7 +497,7 @@ export default function Upload() {
         {/* Upload Guidelines Card */}
         <div className="glass-card animate-fade-in" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
           <h4 style={{ margin: '0 0 10px 0', color: 'var(--accent-violet-light)', fontSize: '0.95rem' }}>💡 Styling Tips for Best AI Scan</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
             <div>✔ <strong>Lay clothing flat</strong> to prevent shadows.</div>
             <div>✔ <strong>Ensure full visibility</strong> (avoid crops).</div>
             <div>✔ <strong>Use bright lighting</strong> for color analysis.</div>
@@ -587,7 +612,13 @@ export default function Upload() {
                     <IconX />
                   </button>
                   {!processing && bgRemovedUrl && (
-                    <div className="bg-removed-badge">✂️ Background removed</div>
+                    isBgRemovalImperfect ? (
+                      <div className="bg-removed-badge warning" style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                        🛑 Background Removal Imperfect
+                      </div>
+                    ) : (
+                      <div className="bg-removed-badge">✂️ Background removed</div>
+                    )
                   )}
                   {processing && (
                     <div className="bg-removed-badge processing">⏳ Removing background...</div>
@@ -609,6 +640,19 @@ export default function Upload() {
               )}
             </div>
 
+            {originalUrl && bgRemovedUrl && isBgRemovalImperfect && (
+              <div className="bg-removal-warning-box animate-slide-up" style={{ marginTop: '16px', padding: '16px', borderRadius: '16px', border: '1px dashed #ef4444', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)', boxShadow: '0 8px 32px rgba(239,68,68,0.15)', backdropFilter: 'blur(8px)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.25rem', marginTop: '-2px' }}>🛑</span>
+                  <div style={{ flex: 1 }}>
+                    <h5 style={{ margin: '0 0 6px 0', fontSize: '0.875rem', fontWeight: 700, color: '#f87171' }}>Imperfect Background Removal</h5>
+                    <p style={{ margin: 0, fontSize: '0.781rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+                      Zyntra's vision algorithms detected too many background splotches or shadows. <strong>Upload is currently disabled.</strong> Please re-upload a different photo of this garment taken against a plain, high-contrast, clutter-free background (like a solid wall) to continue!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="upload-info-box">
               <h4>✨ Smart Closet Power</h4>

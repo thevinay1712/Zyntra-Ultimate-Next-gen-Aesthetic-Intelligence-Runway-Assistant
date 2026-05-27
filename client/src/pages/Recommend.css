@@ -807,3 +807,105 @@
   color: #34d399;
 }
 
+/* Typing indicator dot bounce animation */
+.advisor-typing-indicator span {
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+.advisor-typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.advisor-typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes typing-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Modal layers list active selected state */
+.layer-pill.selected {
+  border-color: var(--accent-violet) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+}
+
+/* Horizontal scrollbar styling for visual similarity */
+.similarity-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+.similarity-carousel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.similarity-carousel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.similarity-carousel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Spin animation for spinner loader */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Wardrobe Low Warning Notice Box */
+.wardrobe-low-warning-box {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wardrobe-low-warning-icon {
+  font-size: 1.5rem;
+  animation: bounce-slow 3s infinite ease-in-out;
+}
+
+.wardrobe-low-warning-text {
+  flex: 1;
+}
+
+.wardrobe-low-warning-title {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wardrobe-low-warning-desc {
+  font-size: 0.813rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.wardrobe-low-warning-desc a {
+  color: var(--accent-violet-light) !important;
+  text-decoration: underline !important;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.wardrobe-low-warning-desc a:hover {
+  color: var(--accent-violet) !important;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
