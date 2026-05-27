@@ -641,14 +641,23 @@ export default function Upload() {
             </div>
 
             {originalUrl && bgRemovedUrl && isBgRemovalImperfect && (
-              <div className="bg-removal-warning-box animate-slide-up" style={{ marginTop: '16px', padding: '16px', borderRadius: '16px', border: '1px dashed #ef4444', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)', boxShadow: '0 8px 32px rgba(239,68,68,0.15)', backdropFilter: 'blur(8px)', textAlign: 'left' }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '1.25rem', marginTop: '-2px' }}>🛑</span>
+              <div className="bg-removal-warning-box animate-slide-up" style={{ marginTop: '16px', padding: '18px 20px', borderRadius: '16px', border: '1px dashed #ef4444', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 158, 11, 0.06) 100%)', boxShadow: '0 8px 32px rgba(239,68,68,0.2)', backdropFilter: 'blur(10px)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.4rem', marginTop: '-2px', flexShrink: 0 }}>🛑</span>
                   <div style={{ flex: 1 }}>
-                    <h5 style={{ margin: '0 0 6px 0', fontSize: '0.875rem', fontWeight: 700, color: '#f87171' }}>Imperfect Background Removal</h5>
-                    <p style={{ margin: 0, fontSize: '0.781rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
-                      Zyntra's vision algorithms detected too many background splotches or shadows. <strong>Upload is currently disabled.</strong> Please re-upload a different photo of this garment taken against a plain, high-contrast, clutter-free background (like a solid wall) to continue!
+                    <h5 style={{ margin: '0 0 5px 0', fontSize: '0.9rem', fontWeight: 700, color: '#f87171' }}>Background Not Removed Properly</h5>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                      Zyntra's vision scan detected background splotches or shadows that couldn't be fully cleared. <strong style={{ color: 'rgba(255,255,255,0.75)' }}>Upload is blocked.</strong> Please re-upload a photo taken against a <strong style={{ color: 'rgba(255,255,255,0.75)' }}>plain, solid-color wall</strong> for clean isolation.
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => { clearFile(); setTimeout(() => fileInputRef.current?.click(), 80); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.12)', color: '#f87171', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease', letterSpacing: '0.02em' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.25)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.8)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'; }}
+                    >
+                      📸 Try a Different Photo
+                    </button>
                   </div>
                 </div>
               </div>
@@ -798,11 +807,17 @@ export default function Upload() {
             </div>
 
             <div className="form-actions">
+              {isBgRemovalImperfect && (
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#f87171', textAlign: 'center', fontWeight: 600 }}>
+                  🛑 Fix background removal above before uploading
+                </p>
+              )}
               <button
                 type="submit"
                 className="btn btn-primary btn-lg submit-btn"
-                disabled={loading || !originalFile || processing}
+                disabled={loading || !originalFile || processing || (autoRemove && isBgRemovalImperfect)}
                 id="btn-upload-submit"
+                title={isBgRemovalImperfect ? 'Background removal imperfect — please re-upload with a plain background' : ''}
               >
                 {loading ? <span className="loader-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Add to Wardrobe'}
               </button>

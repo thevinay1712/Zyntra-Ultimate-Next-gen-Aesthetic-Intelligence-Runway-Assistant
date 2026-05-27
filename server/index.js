@@ -37,7 +37,7 @@ app.use('/api/imagesearch', imageSearchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', name: 'Zyntra API', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', name: 'Zyntra – AI Wardrobe & Outfit Stylist', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
@@ -47,7 +47,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Zyntra API running on http://localhost:${PORT}`);
+  console.log(`\n🚀 Zyntra – Ultimate Next-gen Aesthetic Intelligence & Runway Assistant`);
   console.log(`📁 Uploads served from /uploads`);
   console.log(`🔗 API base: http://localhost:${PORT}/api\n`);
 });

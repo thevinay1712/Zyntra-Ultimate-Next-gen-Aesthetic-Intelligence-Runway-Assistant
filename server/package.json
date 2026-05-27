@@ -1,7 +1,7 @@
 {
   "name": "zyntra-server",
   "version": "1.0.0",
-  "description": "Zyntra - Virtual Wardrobe Manager API",
+  "description": "Zyntra – Ultimate Next-gen Aesthetic Intelligence & Runway Assistant | Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

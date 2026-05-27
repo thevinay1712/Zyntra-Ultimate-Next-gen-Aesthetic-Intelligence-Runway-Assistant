@@ -109,7 +109,7 @@ export default function Landing() {
           <div className="hero-content">
             <div className="hero-badge animate-fade-in">
               <span className="badge-pulse" />
-              <span>AI-Powered Wardrobe Manager</span>
+              <span>AI Wardrobe & Outfit Stylist</span>
             </div>
 
             <h1 className="hero-title animate-fade-in delay-1">
@@ -327,7 +327,7 @@ export default function Landing() {
               <div className="logo-mark" style={{ width: 28, height: 28, fontSize: '0.813rem' }}>Z</div>
               <span className="logo-text" style={{ fontSize: '1.125rem' }}>Zyntra</span>
             </div>
-            <p className="footer-tagline">Your AI-powered wardrobe manager.</p>
+            <p className="footer-tagline">Ultimate Next-gen Aesthetic Intelligence & Runway Assistant.</p>
           </div>
           <span className="footer-copy">© 2026 Zyntra. Built with ❤️ by Vinay Sinnur</span>
         </div>
