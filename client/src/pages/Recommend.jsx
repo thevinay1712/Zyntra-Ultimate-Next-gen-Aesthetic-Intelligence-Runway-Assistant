@@ -17,12 +17,14 @@ const DESTINATIONS = [
   { id: 'party', label: 'Night Out & Club', icon: '🎉', desc: 'Festive celebrations, parties, date nights' }
 ];
 
+/*
 const WEATHER_MOCK = {
   sunny: { temp: 29, condition: 'Clear Sky ☀️', color: '#f59e0b' },
   rainy: { temp: 15, condition: 'Heavy Showers 🌧️', color: '#3b82f6' },
   cold: { temp: 2, condition: 'Freezing Snow ❄️', color: '#06b6d4' },
   windy: { temp: 12, condition: 'Chilly Gale 💨', color: '#10b981' }
 };
+*/
 
 /* ========================================================
    DYNAMIC ON-THE-FLY CANVAS BACKGROUND REMOVER COMPONENT
@@ -500,7 +502,8 @@ export default function Recommend() {
   // Weather states
   const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny Day ☀️' });
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [simulatedWeather, setSimulatedWeather] = useState(null); // 'sunny', 'rainy', 'cold', 'windy'
+  // const [simulatedWeather, setSimulatedWeather] = useState(null); // 'sunny', 'rainy', 'cold', 'windy' (Disabled by user request)
+  const [locationName, setLocationName] = useState('Local Area');
   
   // Try-on state
   const [tryOnOutfit, setTryOnOutfit] = useState(null);
@@ -654,7 +657,8 @@ export default function Recommend() {
       return [];
     }
 
-    const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
+    // const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
+    const currentTemp = weather.temp; // Rely strictly on real-time weather
     const isColdWeather = currentTemp < 15;
 
     const outfits = [];
@@ -805,7 +809,7 @@ export default function Recommend() {
     const seen = new Set();
     const unique = [];
     for (const outfit of outfits) {
-      const key = `${outfit.items.top._id}-${outfit.items.bottom._id}`;
+    const key = `${outfit.items.top._id}-${outfit.items.bottom._id}`;
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(outfit);
@@ -819,42 +823,109 @@ export default function Recommend() {
   const generateAIAdviceText = (topOutfit) => {
     if (!topOutfit) return '';
 
-    const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
-    const isCold = currentTemp < 15;
+    // const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
+    // const currentCondition = simulatedWeather ? WEATHER_MOCK[simulatedWeather].condition : weather.condition;
+    const currentTemp = weather.temp; // Rely strictly on real-time weather
+    const currentCondition = weather.condition;
     const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
 
-    let advice = `Hello there! I am your Closet AI Stylist. For your ${params.occasion} outing today in ${currentTemp}°C weather, I have designed a premium styling recommendation from your wardrobe.\n\n`;
-
-    if (isCold) {
-      advice += `Since it's quite chilly (${currentTemp}°C) outside, I recommend layering to keep you comfortable. `;
+    // 1. Core Occasion Setup
+    const occasionTitle = params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1);
+    
+    // 2. Weather Specific Commentary
+    let weatherAdvice = '';
+    if (currentTemp < 10) {
+      weatherAdvice = `❄️ Freezing winter conditions detected (${currentTemp}°C). Heavy thermal insulation is active. `;
       if (outerwear) {
-        advice += `I've selected your ${outerwear.name} as a protective outerwear layer. Style it open over the ${top.name} for a modern, relaxed silhouette. `;
+        weatherAdvice += `The ${outerwear.name} acts as your primary thermal shield, styled beautifully over the ${top.name}. `;
       } else {
-        advice += `I suggest wearing your ${top.name} top, but please note that you don't have any outerwear (like jackets or coats) in your digital wardrobe yet. Scan one soon for optimal cold-weather recommendations! `;
+        weatherAdvice += `Please bundle up! Your digital wardrobe is currently missing a warm coat or jacket—consider scanning one soon to complete cold-weather layering guidelines. `;
       }
+    } else if (currentTemp >= 10 && currentTemp < 17) {
+      weatherAdvice = `🍂 A brisk, chilly atmosphere (${currentTemp}°C). `;
+      if (outerwear) {
+        weatherAdvice += `I suggest wearing your ${outerwear.name} styled open to create a crisp, modern multi-layered silhouette with your ${top.name}. `;
+      } else {
+        weatherAdvice += `A cozy sweater or light jacket over your ${top.name} is recommended for optimal comfort. `;
+      }
+    } else if (currentTemp >= 17 && currentTemp < 24) {
+      weatherAdvice = `⛅ A pleasant, temperate climate (${currentTemp}°C). Perfect for light styling. The ${top.name} provides clean, comfortable insulation without overheating. `;
     } else {
-      advice += `The weather is perfect and pleasant (${currentTemp}°C), so we can keep your outfit light and breezy. I suggest wearing the ${top.name} as your core top. `;
+      weatherAdvice = `☀️ Warm, high-temperature conditions (${currentTemp}°C). Optimizing for maximum breathability. The lightweight structure of the ${top.name} keeps you cool and collected under the sun. `;
     }
 
-    advice += `Pair it with your ${bottom.name} bottom. `;
-
-    if (top.aesthetic && bottom.aesthetic && top.aesthetic === bottom.aesthetic) {
-      advice += `Both items align beautifully under the ${top.aesthetic} aesthetic, creating a very cohesive and intentional look. `;
-    } else {
-      advice += `This blends a ${top.aesthetic || 'Casual'} top with a ${bottom.aesthetic || 'Casual'} bottom, creating a balanced and relaxed outfit. `;
+    // 3. Condition-based protective additions
+    if (currentCondition.includes('🌧️') || currentCondition.includes('Rainy') || currentCondition.includes('Showers')) {
+      weatherAdvice += `🌧️ Rain protection protocol is active: ensure your layers are water-resistant to keep the silhouette clean and dry. `;
+    } else if (currentCondition.includes('💨') || currentCondition.includes('Windy') || currentCondition.includes('Gale')) {
+      weatherAdvice += `💨 Gale-defense active: the outer layer acts as an effective windbreak to seal in warmth. `;
     }
 
+    // 4. Aesthetic / Style Synergy Matrix
+    let styleSynergy = '';
+    const topStyle = top.aesthetic || 'Casual';
+    const bottomStyle = bottom.aesthetic || 'Casual';
+    
+    const styleCombinations = {
+      'Minimalist-Minimalist': 'สะอาดตาและประณีต (Ultra-Cohesive). The clean lines of the minimalist silhouette project absolute contemporary sophistication, forming an effortless, high-contrast visual balance.',
+      'Streetwear-Streetwear': 'Urban style synergy. The relaxed streetwear contour brings a confident, effortlessly cool energy that is highly synchronized and expressive.',
+      'Activewear-Activewear': 'High-performance symmetry. Optimized contours maximize range of motion while maintaining a highly athletic, modern, and cohesive look.',
+      'Formal-Formal': 'Chiseled structural design. Projects absolute professionalism and tailored elegance, creating a sharp, commanding presence.',
+      'Casual-Casual': 'Relaxed daily harmony. Emphasizes absolute ease and effortless comfort, perfect for daily hangouts and casual encounters.'
+    };
+
+    const key = `${topStyle}-${bottomStyle}`;
+    if (styleCombinations[key]) {
+      styleSynergy = styleCombinations[key];
+    } else if (topStyle === bottomStyle) {
+      styleSynergy = `Intentional ${topStyle} alignment. The items coordinate seamlessly under a shared design language, creating a highly unified aesthetic.`;
+    } else {
+      // Cross-aesthetic styling
+      styleSynergy = `Balanced high-low styling. Blending a ${topStyle} top with a ${bottomStyle} bottom creates an appealing, multi-dimensional visual flow that is both comfortable and stylishly relaxed.`;
+    }
+
+    // 5. Color Theory Psychology
+    let colorPsychology = '';
+    const colorNote = topOutfit.colorNote;
+    
+    if (colorNote.includes('Complementary')) {
+      colorPsychology = `Complementary color dynamics are active. The bold contrast between the ${top.color?.primary} top and the ${bottom.color?.primary} bottom creates an eye-catching, high-energy focal point that projects absolute style confidence.`;
+    } else if (colorNote.includes('Analogous')) {
+      colorPsychology = `Analogous color theory in play. The smooth, harmonious transition between the adjacent ${top.color?.primary} and ${bottom.color?.primary} hues creates a sophisticated, calming visual flow that is highly pleasing to the eye.`;
+    } else if (colorNote.includes('Neutral')) {
+      colorPsychology = `Refined neutral palette. Utilizing timeless, understated tones projects high-end luxury and absolute versatility, allowing the visual contours of the garments to take center stage.`;
+    } else {
+      colorPsychology = `Dynamic color mixing. The contrast between the ${top.color?.primary} and ${bottom.color?.primary} elements creates a crisp, high-contrast style statement.`;
+    }
+
+    // 6. Finishing details (Shoes & Accessories)
+    let details = '';
     if (shoes) {
-      advice += `For footwear, slide into your ${shoes.name} to round out the style. `;
+      details += `For footwear, sliding into the ${shoes.name} anchors the outfit beautifully. `;
+      if (shoes.aesthetic === topStyle) {
+        details += `Its ${shoes.aesthetic} styling reinforces the core aesthetic. `;
+      }
     }
-
     if (accessory) {
-      advice += `Finally, accent the look with your ${accessory.name} for that perfect finishing touch. `;
+      details += `Finish off with the ${accessory.name} for an elegant, highly customized accessory accent.`;
     }
 
-    advice += `\n\nColor Harmony: ${topOutfit.colorNote}. The ${top.color?.primary} and ${bottom.color?.primary} color palette is very ${topOutfit.score > 85 ? 'striking and sophisticated' : 'flattering'}.`;
+    // Combine into a master generative-styled personal review
+    return `Hello there! I am your Closet AI Stylist. For your ${occasionTitle} outing today in your local region (${locationName}), I have formulated a premium, mathematically optimized style recommendation from your digital wardrobe.
 
-    return advice;
+✨ STYLING ANGLE:
+${styleSynergy}
+
+🌡️ WEATHER ADAPTATION:
+${weatherAdvice}
+
+🎨 COLOR PSYCHOLOGY & HARMONY:
+${colorPsychology}
+
+👟 ACCESSORY & FINISHING DETAILS:
+${details}
+
+This combination scores a remarkable ${topOutfit.score}% Style Match based on color theory, occasion eligibility, and seasonal guidelines. Step out with absolute confidence!`;
   };
 
   // Load weather, customized avatar and fit adjustments from localStorage
@@ -932,10 +1003,36 @@ export default function Recommend() {
       else if (code >= 95) condition = 'Thunderstorm ⛈️';
 
       setWeather({ temp, condition });
+
+      // Resolve timezone city name dynamically for free
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const city = timezone ? timezone.split('/').pop().replace('_', ' ') : 'Local Area';
+      setLocationName(city);
     } catch (e) {
       console.warn('Weather API failed, fallback active:', e.message);
     } finally {
       setWeatherLoading(false);
+    }
+  };
+
+  const handleFetchLiveWeather = () => {
+    if (navigator.geolocation) {
+      setWeatherLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          await fetchRealWeather(pos.coords.latitude, pos.coords.longitude);
+          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const city = timezone ? timezone.split('/').pop().replace('_', ' ') : 'Local Area';
+          success(`Live weather loaded for ${city}! 📍`);
+        },
+        (err) => {
+          console.warn('Geolocation permission denied:', err);
+          error('Location access denied. Please allow location permissions in your browser.');
+          setWeatherLoading(false);
+        }
+      );
+    } else {
+      error('Geolocation is not supported by your browser.');
     }
   };
 
@@ -981,7 +1078,8 @@ export default function Recommend() {
     success('Fit settings reset!');
   };
 
-  const activeWeather = simulatedWeather ? WEATHER_MOCK[simulatedWeather] : weather;
+  // const activeWeather = simulatedWeather ? WEATHER_MOCK[simulatedWeather] : weather;
+  const activeWeather = weather; // Rely strictly on real-time weather
 
   // Active outfit slot item for fitter panel
   const activeFitterItem = tryOnOutfit ? tryOnOutfit[fitActiveSlot] : null;
@@ -1006,11 +1104,24 @@ export default function Recommend() {
               {activeWeather.temp}°C
             </div>
             <div className="weather-info">
-              <span className="weather-title">Active Local Weather</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="weather-title">Local Weather ({locationName})</span>
+                <button 
+                  type="button" 
+                  onClick={handleFetchLiveWeather} 
+                  disabled={weatherLoading}
+                  className="btn btn-ghost" 
+                  style={{ padding: '2px 8px', fontSize: '0.75rem', height: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '999px', background: 'rgba(255,255,255,0.02)' }}
+                  title="Update weather using your live GPS location"
+                >
+                  {weatherLoading ? '⏳ updating...' : '📍 Fetch Live'}
+                </button>
+              </div>
               <span className="weather-desc">{activeWeather.condition}</span>
             </div>
           </div>
 
+          {/*
           <div className="weather-overrides">
             <span className="override-title">Simulate Weather:</span>
             <div className="override-buttons">
@@ -1033,6 +1144,7 @@ export default function Recommend() {
               })}
             </div>
           </div>
+          */}
         </div>
 
         <div className="recommend-controls glass-card animate-slide-up">

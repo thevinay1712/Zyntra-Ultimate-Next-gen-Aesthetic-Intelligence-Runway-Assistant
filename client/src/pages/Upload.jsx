@@ -463,7 +463,7 @@ export default function Upload() {
 
   return (
     <div className="main-content" id="upload-page">
-      <div className="container max-w-4xl">
+      <div className="container">
         <div className="upload-header animate-fade-in">
           <h1 className="dashboard-title">Add to Wardrobe</h1>
           <p className="dashboard-subtitle">Digitize a new piece of clothing with visual adjustments</p>
@@ -472,7 +472,7 @@ export default function Upload() {
         {/* Upload Guidelines Card */}
         <div className="glass-card animate-fade-in" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
           <h4 style={{ margin: '0 0 10px 0', color: 'var(--accent-violet-light)', fontSize: '0.95rem' }}>💡 Styling Tips for Best AI Scan</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
             <div>✔ <strong>Lay clothing flat</strong> to prevent shadows.</div>
             <div>✔ <strong>Ensure full visibility</strong> (avoid crops).</div>
             <div>✔ <strong>Use bright lighting</strong> for color analysis.</div>
