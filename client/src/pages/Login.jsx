@@ -11,6 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [noAccountError, setNoAccountError] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -18,12 +19,17 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setNoAccountError(false);
     setLoading(true);
     try {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (err.response?.status === 404 || err.response?.data?.message === 'No account exists') {
+        setNoAccountError(true);
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -89,6 +95,23 @@ export default function Login() {
               {loading ? <span className="loader-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Log In'}
             </button>
           </form>
+
+          {noAccountError && (
+            <div className="no-account-notice" style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px dashed rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              fontSize: '0.875rem',
+              textAlign: 'center',
+              lineHeight: '1.4',
+              animation: 'fadeIn 0.3s ease'
+            }}>
+              No account exists, <Link to="/signup" style={{ color: 'var(--accent-violet-light)', fontWeight: 600, textDecoration: 'underline' }}>create one</Link> to refresh your styling
+            </div>
+          )}
 
           <p className="auth-footer">
             Don't have an account?
