@@ -66,3 +66,55 @@ Instead of just showing a collage of flat clothing items, advanced platforms sho
 
 * *How it works:* Generates a virtual model matching the user's basic body parameters (height, weight, skin tone) and dynamically overlays/drapes their actual clothing photos on the avatar.
 * *Tech Stack:* Stable Diffusion (with ControlNet and IP-Adapters) or specialized virtual try-on models like TryOnDiffusion.
+
+---
+
+## 3. Comprehensive Wardrobe Classification Reference
+
+Below is a comprehensive breakdown of what humans wear, organized by category:
+
+### 👕 Tops & Upper Body
+* **Casual:** T-shirts, tank tops, polo shirts, crop tops, tube tops.
+* **Formal & Dress:** Button-down shirts, blouses, tunics.
+* **Sweaters & Knits:** Pullovers, cardigans, hoodies, turtlenecks.
+
+### 👖 Bottoms & Lower Body
+* **Denim:** Jeans (skinny, straight, relaxed, bootcut).
+* **Trousers & Pants:** Chinos, dress pants, cargo pants, leggings, joggers, sweatpants.
+* **Shorts:** Denim shorts, Bermuda shorts, athletic shorts, boardshorts.
+
+### 👗 One-Piece Garments
+* **Dresses:** A-line, maxi, midi, bodycon, sundresses, evening gowns.
+* **Jumpsuits & Rompers:** Tailored jumpsuits, casual rompers, overalls.
+
+### 🧥 Outerwear & Layers
+* **Jackets:** Denim jackets, leather jackets, bomber jackets, windbreakers, blazers.
+* **Coats:** Trench coats, pea coats, parkas, puffer jackets, overcoats.
+* **Vests:** Puffer vests, suit vests.
+
+### 🥻 Traditional & Cultural Attire
+* **South Asia:** Sarees, lehengas, salwar kameez, kurtas, sherwanis.
+* **East Asia:** Kimonos (Japan), Cheongsams/Qipaos (China), Hanbok (Korea).
+* **Middle East & Africa:** Thobes, abayas, kaftans, dashikis.
+* **Europe:** Kilts (Scotland), Dirndls (Bavaria/Austria).
+
+### 🩱 Undergarments & Sleepwear
+* **Underwear:** Briefs, boxer briefs, panties, thongs.
+* **Support:** Bras, sports bras, bralettes, shapewear.
+* **Sleep:** Pajamas, nightgowns, robes, onesies.
+
+### 👟 Footwear
+* **Athletic:** Running shoes, sneakers, tennis shoes, cleats.
+* **Casual:** Boots, loafers, sandals, flip-flops, ballet flats.
+* **Formal:** Oxford shoes, dress boots, high heels, stilettos.
+
+### 👒 Accessories
+* **Headwear:** Hats, beanies, caps, turbans, scarves, hijabs.
+* **Handwear:** Gloves, mittens.
+* **Jewelry:** Necklaces, rings, bracelets, watches, earrings.
+* **Other:** Belts, ties, sunglasses, wallets, suspenders.
+
+### 🛡️ Specialized & Functional Gear
+* **Athletic:** Swimsuits, wetsuits, ski suits, yoga wear.
+* **Occupational:** Scrubs (medical), hard hats, hazmat suits, high-visibility vests.
+* **Formal/Ritual:** Military uniforms, graduation gowns, religious vestments.

@@ -222,3 +222,49 @@
   width: 24px;
   height: 24px;
 }
+
+/* === Add Clothes Card Placeholder === */
+.clothing-card.add-card {
+  border: 1px dashed var(--border-strong);
+  background: rgba(255, 255, 255, 0.015);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.clothing-card.add-card:hover {
+  border-color: var(--accent-violet);
+  background: rgba(139, 92, 246, 0.03);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.add-card-image-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+.add-card-plus {
+  font-family: var(--font-heading);
+  font-size: 5.5rem;
+  font-weight: 200;
+  color: var(--text-primary);
+  opacity: 0.28; /* Adjusted for subtle, legible transparency */
+  transition: all var(--transition-spring);
+  user-select: none;
+  line-height: 1;
+}
+
+.clothing-card.add-card:hover .add-card-plus {
+  opacity: 0.85;
+  transform: scale(1.1) rotate(90deg);
+  color: var(--accent-violet-light);
+}
+
+.add-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}

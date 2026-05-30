@@ -176,13 +176,27 @@ export default function Dashboard() {
           </div>
         ) : filtered.length > 0 ? (
           <div className="clothes-grid">
+            {/* Dedicated "Add Clothes" Card Box */}
+            <Link to="/upload" className="clothing-card glass-card add-card animate-fade-in-scale">
+              <div className="card-image-wrap add-card-image-wrap">
+                <div className="add-card-plus">+</div>
+              </div>
+              <div className="card-content add-card-content">
+                <h3 className="card-title" style={{ color: 'var(--accent-violet-light)' }}>Add Clothes</h3>
+                <p className="card-category">Digitize new garment</p>
+                <div className="card-footer" style={{ borderTop: 'none', padding: 0, marginTop: 'auto' }}>
+                  <span className="card-tag" style={{ background: 'var(--accent-violet-soft)', color: 'var(--accent-violet-light)' }}>Quick Upload</span>
+                </div>
+              </div>
+            </Link>
+
             {filtered.map((item, i) => (
               <ClothingCard
                 key={item._id}
                 item={item}
                 onDelete={handleDelete}
                 onEdit={handleEditClick}
-                style={{ animationDelay: `${(i % 10) * 0.05}s` }}
+                style={{ animationDelay: `${((i + 1) % 10) * 0.05}s` }}
               />
             ))}
           </div>

@@ -1158,13 +1158,15 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
 
   return (
     <div className="main-content" id="recommend-page">
-      <div className="container max-w-4xl">
+      <div className="container">
         <div className="recommend-header animate-fade-in">
-          <div className="ai-badge">
-            <div className="ai-dot" />
-            Zyntra Closet AI Engine v2
+          <div className="recommend-title-wrap" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <h1 className="dashboard-title" style={{ margin: 0 }}>AI Styling</h1>
+            <div className="ai-badge" style={{ margin: 0 }}>
+              <div className="ai-dot" />
+              Zyntra Closet AI Engine v2
+            </div>
           </div>
-          <h1 className="dashboard-title">Smart Styling</h1>
           <p className="dashboard-subtitle">Let Zyntra styling algorithms build custom wardrobe suggestions for your next event.</p>
         </div>
 

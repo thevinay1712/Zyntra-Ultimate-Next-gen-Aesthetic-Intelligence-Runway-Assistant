@@ -14,6 +14,20 @@ const IconChevronDown = ({ open }) => (
   </svg>
 );
 
+const IconShirt = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M20.38 3.46L16 2a8 8 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>;
+const IconPants = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M15.5 22H21v-3.5L18.5 7 17 3H7L5.5 7 3 18.5V22h5.5v-3.5h7V22z M11 3v12 M13 3v12"/></svg>;
+const IconShoe = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M4 16v4h16v-4 M4 16s1.5-2 4-2 3 2 4 2 2-2 4-2 2 2 4 2 M4 12c0-2 2-4 4-4s3 2 4 2 2-2 4-2 2 2 4 2"/></svg>;
+const IconCoat = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M20 5l-4-3-4 3 M4 5l4-3 4 3 M6 10v12h12V10 M6 10l6-4 6 4"/></svg>;
+const IconWatch = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><circle cx="12" cy="12" r="6"/><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="9" y="18" width="6" height="4" rx="1"/><path d="M12 9v3l1.5 1.5"/></svg>;
+
+const CATEGORY_ITEMS = [
+  { id: 'tops', label: 'Tops', Icon: IconShirt },
+  { id: 'bottoms', label: 'Bottoms', Icon: IconPants },
+  { id: 'outerwear', label: 'Outerwear', Icon: IconCoat },
+  { id: 'shoes', label: 'Shoes', Icon: IconShoe },
+  { id: 'accessories', label: 'Accessories', Icon: IconWatch },
+];
+
 const CATEGORIES = ['tops', 'bottoms', 'shoes', 'outerwear', 'accessories'];
 const SEASONS = ['spring', 'summer', 'fall', 'winter'];
 const OCCASIONS = ['casual', 'formal', 'sport', 'party'];
@@ -252,6 +266,7 @@ export default function Upload() {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   // Trigger background removal on original image changes
   useEffect(() => {
     if (!originalUrl || !autoRemove) {
@@ -349,9 +364,39 @@ export default function Upload() {
     }
   };
 
+  const autoDetectCategory = (nameVal) => {
+    const lower = nameVal.toLowerCase();
+    const keywords = {
+      tops: ['t-shirt', 'tshirt', 'shirt', 'tee', 'top', 'blouse', 'sweater', 'hoodie', 'polo', 'jersey', 'tank', 'cardigan', 'pullover'],
+      bottoms: ['jeans', 'pants', 'trouser', 'shorts', 'skirt', 'leggings', 'sweatpants', 'cargo', 'joggers', 'chino', 'slacks'],
+      shoes: ['shoe', 'sneaker', 'boot', 'heel', 'loafer', 'sandal', 'slipper', 'oxford', 'footwear'],
+      outerwear: ['jacket', 'coat', 'blazer', 'trench', 'parka', 'vest', 'windbreaker', 'overcoat'],
+      accessories: ['watch', 'tie', 'belt', 'scarf', 'glass', 'sunglass', 'hat', 'cap', 'bag', 'wallet', 'purse', 'glove', 'socks', 'jewelry', 'ring', 'necklace', 'bracelet', 'accessory']
+    };
+
+    for (const [cat, words] of Object.entries(keywords)) {
+      for (const word of words) {
+        const regex = new RegExp(`\\b${word}`, 'i');
+        if (regex.test(lower)) {
+          return cat;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'name') {
+        const detected = autoDetectCategory(value);
+        if (detected) {
+          updated.category = detected;
+        }
+      }
+      return updated;
+    });
   };
 
   const toggleChip = (field, item) => {
@@ -687,19 +732,83 @@ export default function Upload() {
             </div>
 
             <div className="input-group">
-              <label htmlFor="category">Category *</label>
-              <select
-                id="category"
-                name="category"
-                className="input filter-select"
-                value={formData.category}
-                onChange={handleChange}
-                required
+              <label>Category *</label>
+              <div 
+                className="category-radio-grid" 
+                style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', 
+                  gap: '12px', 
+                  marginTop: '4px' 
+                }}
               >
-                {CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                ))}
-              </select>
+                {CATEGORY_ITEMS.map((cat) => {
+                  const CatIcon = cat.Icon;
+                  const isSelected = formData.category === cat.id;
+                  return (
+                    <div
+                      key={cat.id}
+                      className={`category-radio-card glass-card ${isSelected ? 'active' : ''}`}
+                      onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))}
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        padding: '20px 10px 14px 10px',
+                        cursor: 'pointer',
+                        borderRadius: '12px',
+                        border: isSelected ? '1px solid var(--accent-violet)' : '1px solid var(--border-subtle)',
+                        background: isSelected ? 'var(--accent-violet-soft)' : 'rgba(255, 255, 255, 0.01)',
+                        color: isSelected ? 'var(--accent-violet-light)' : 'var(--text-secondary)',
+                        boxShadow: isSelected ? 'var(--shadow-glow-violet)' : 'none',
+                        transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                        textAlign: 'center',
+                        userSelect: 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'var(--border-medium)';
+                          e.currentTarget.style.background = 'var(--bg-glass-hover)';
+                          e.currentTarget.style.color = 'var(--text-primary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
+                          e.currentTarget.style.color = 'var(--text-secondary)';
+                        }
+                      }}
+                    >
+                      {/* Round Radio Indicator at Top-Right */}
+                      <div 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '10px', 
+                          right: '10px', 
+                          width: '12px', 
+                          height: '12px', 
+                          borderRadius: '50%', 
+                          border: isSelected ? '4px solid var(--accent-violet-light)' : '1px solid var(--border-strong)', 
+                          background: isSelected ? 'var(--bg-primary)' : 'transparent', 
+                          transition: 'all 0.25s ease' 
+                        }} 
+                      />
+                      
+                      <div className="radio-card-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', transform: isSelected ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.25s ease' }}>
+                        <CatIcon />
+                      </div>
+                      
+                      <span style={{ fontSize: '0.813rem', fontWeight: 600, letterSpacing: '0.01em', textTransform: 'capitalize' }}>
+                        {cat.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ADVANCED DETAILS DROPDOWN (Perfect for lazy users, keeps upload simple!) */}
