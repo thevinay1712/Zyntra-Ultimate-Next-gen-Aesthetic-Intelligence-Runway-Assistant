@@ -33,10 +33,10 @@ class CLIPModelWrapper:
 
     def load(self):
         if self.model is None:
-            print("🧠 Loading local clip-vit-base-patch32 model singleton...")
+            print("[CLIP] Loading local clip-vit-base-patch32 model singleton...")
             self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
             self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
-            print("✅ CLIP Model loaded successfully!")
+            print("[CLIP] CLIP Model loaded successfully!")
         return self.model, self.processor
 
 clip_wrapper = CLIPModelWrapper()
