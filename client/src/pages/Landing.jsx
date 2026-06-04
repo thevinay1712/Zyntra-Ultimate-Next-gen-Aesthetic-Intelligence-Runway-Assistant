@@ -25,37 +25,6 @@ const IconArrowRight = () => (
   <svg viewBox="0 0 24 24" className="icon icon-sm"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
 );
 
-function StarField() {
-  const stars = Array.from({ length: 80 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    size: Math.random() * 2 + 1,
-    duration: `${Math.random() * 4 + 2}s`,
-    delay: `${Math.random() * 5}s`,
-    opacity: Math.random() * 0.5 + 0.1,
-  }));
-
-  return (
-    <div className="star-field">
-      {stars.map((s) => (
-        <div
-          key={s.id}
-          className="star"
-          style={{
-            left: s.left,
-            top: s.top,
-            width: s.size,
-            height: s.size,
-            opacity: s.opacity,
-            '--duration': s.duration,
-            '--delay': s.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function Landing() {
   const heroRef = useRef(null);
@@ -78,7 +47,6 @@ export default function Landing() {
 
   return (
     <div className="landing" id="landing-page">
-      <StarField />
 
       {/* Morphing background orbs */}
       <div className="landing-bg">
