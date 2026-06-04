@@ -283,9 +283,9 @@ export default function Landing() {
           </div>
           <div className="steps-grid">
             {[
-              { num: '01', title: 'Upload', desc: 'Take a photo of your clothing. Zyntra extracts colors and metadata automatically.', color: '#8b5cf6' },
-              { num: '02', title: 'Organize', desc: 'Your wardrobe is digitized. Filter, search, and browse by category, season, or color.', color: '#f43f5e' },
-              { num: '03', title: 'Get Styled', desc: 'AI picks the best outfits using color harmony and occasion matching. Save your favorites.', color: '#10b981' },
+              { num: '01', title: 'Upload', desc: 'Take a photo of your clothing. Zyntra extracts colors and metadata automatically.', color: '#c9b8f1' },
+              { num: '02', title: 'Organize', desc: 'Your wardrobe is digitized. Filter, search, and browse by category, season, or color.', color: '#efbdc6' },
+              { num: '03', title: 'Get Styled', desc: 'AI picks the best outfits using color harmony and occasion matching. Save your favorites.', color: '#c9eadf' },
             ].map((step, i) => (
               <div key={i} className="step-card reveal" style={{ animationDelay: `${i * 0.15}s` }}>
                 <div className="step-num" style={{ color: step.color }}>{step.num}</div>
