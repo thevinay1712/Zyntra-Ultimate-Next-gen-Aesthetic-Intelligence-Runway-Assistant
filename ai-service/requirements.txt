@@ -1,9 +1,10 @@
 fastapi>=0.110.0
 uvicorn>=0.28.0
 python-multipart>=0.0.9
-rembg>=2.0.62
+rembg[cpu]>=2.0.62
 pillow>=10.2.0
 opencv-python-headless>=4.9.0.80
 numpy>=1.26.4
 torch --extra-index-url https://download.pytorch.org/whl/cpu
 transformers
+mediapipe>=0.10.9

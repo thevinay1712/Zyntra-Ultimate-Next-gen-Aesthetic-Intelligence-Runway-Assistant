@@ -8,6 +8,7 @@ import torch
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 import io
+import base64
 
 from core.quality import analyze_upload_quality
 from core.segmentation import segment_garment
@@ -141,6 +142,48 @@ async def api_analyze_clothing(
     except Exception as e:
         print(f"Error in analyze-clothing: {e}")
         raise HTTPException(status_code=500, detail=f"AI Service processing error: {str(e)}")
+
+from core.tryon_pipeline import extract_body_scaling
+
+@app.post("/tryon")
+async def api_tryon(
+    image: UploadFile = File(...),
+    height: str = Form(None),
+    weight: str = Form(None),
+    details: str = Form(None)
+):
+    try:
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            raise HTTPException(status_code=400, detail="Invalid image file.")
+            
+        scale_matrix = extract_body_scaling(img_bgr, height=height, weight=weight, details=details)
+        
+        # Segment the user's background out
+        segmented_bytes, cv2_bgra, _ = segment_garment(contents)
+        encoded_img = base64.b64encode(segmented_bytes).decode('utf-8')
+        
+        # Extract skin tone from the top 15% of the segmented image (head/neck area)
+        height_px = cv2_bgra.shape[0]
+        top_region = cv2_bgra[0:int(height_px * 0.15), :]
+        valid_pixels = top_region[top_region[:, :, 3] > 0]
+        if len(valid_pixels) > 0:
+            avg_color = np.mean(valid_pixels, axis=0)
+            skin_tone = f"#{int(avg_color[2]):02x}{int(avg_color[1]):02x}{int(avg_color[0]):02x}"
+        else:
+            skin_tone = "#f1c27d" # Default generic light skin tone
+            
+        return JSONResponse(content={
+            "success": True,
+            "scaleMatrix": scale_matrix,
+            "segmentedImage": encoded_img,
+            "skinTone": skin_tone
+        })
+    except Exception as e:
+        print(f"Error in tryon: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
