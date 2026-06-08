@@ -8,6 +8,7 @@ import Upload from './pages/Upload';
 import Outfits from './pages/Outfits';
 import Recommend from './pages/Recommend';
 import Avatar from './pages/Avatar';
+import TryOnPlayground from './pages/TryOnPlayground';
 import Navbar from './components/Navbar';
 import Toast from './components/Toast';
 import { ToastProvider } from './context/ToastContext';
@@ -42,6 +43,7 @@ function AppContent() {
         <Route path="/outfits" element={<ProtectedRoute><Outfits /></ProtectedRoute>} />
         <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
         <Route path="/avatar" element={<ProtectedRoute><Avatar /></ProtectedRoute>} />
+        <Route path="/tryon" element={<ProtectedRoute><TryOnPlayground /></ProtectedRoute>} />
       </Routes>
       {!isLandingPage && (
         <footer className="app-footer">
