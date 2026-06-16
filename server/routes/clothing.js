@@ -61,7 +61,96 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       // Use defaults
     }
 
-    const fileBuffer = fs.readFileSync(req.file.path);
+    let fileBuffer = fs.readFileSync(req.file.path);
+    const originalMime = req.file.mimetype;
+    let bgRemoved = false;
+    let transparentBuffer = null;
+
+    // --- HUGGING FACE: AI BACKGROUND REMOVAL (Option 1) ---
+    if (process.env.HF_API_TOKEN) {
+      try {
+        console.log('🤖 Querying Hugging Face RMBG-1.4 model for background isolation...');
+        const hfResponse = await fetch('https://api-inference.huggingface.co/models/briaai/RMBG-1.4', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.HF_API_TOKEN}`,
+            'Content-Type': originalMime
+          },
+          body: fileBuffer,
+          timeout: 15000 // 15-second timeout
+        });
+
+        if (hfResponse.ok) {
+          transparentBuffer = await hfResponse.buffer();
+          bgRemoved = true;
+          console.log('✅ Background isolated successfully via Hugging Face RMBG-1.4!');
+        } else {
+          const errorText = await hfResponse.text();
+          console.warn(`Hugging Face API background removal failed (status ${hfResponse.status}): ${errorText}`);
+        }
+      } catch (err) {
+        console.warn('Failed to call Hugging Face background removal API:', err.message);
+      }
+    } else {
+      console.warn('HF_API_TOKEN is not defined in .env. Skipping Hugging Face background removal.');
+    }
+
+    // --- FALLBACK: LOCAL PYTHON AI SERVICE BACKGROUND REMOVAL ---
+    if (!bgRemoved) {
+      try {
+        console.log('🔌 Falling back to local Python AI service for background removal...');
+        const localFormData = new FormData();
+        localFormData.append('file', fileBuffer, {
+          filename: req.file.filename,
+          contentType: originalMime
+        });
+
+        const localResponse = await fetch('http://localhost:8000/remove-bg', {
+          method: 'POST',
+          body: localFormData,
+          headers: localFormData.getHeaders(),
+          timeout: 25000 // 25-second timeout
+        });
+
+        if (localResponse.ok) {
+          transparentBuffer = await localResponse.buffer();
+          bgRemoved = true;
+          console.log('✅ Background isolated successfully via local Python AI service!');
+        } else {
+          const localErrorText = await localResponse.text();
+          console.warn(`Local AI service background removal failed (status ${localResponse.status}): ${localErrorText}`);
+        }
+      } catch (err) {
+        console.warn('Failed to call local Python AI background removal service:', err.message);
+      }
+    }
+
+    // If background was removed successfully, save the transparent PNG and update file details
+    if (bgRemoved && transparentBuffer) {
+      // Generate new unique name with .png extension
+      const baseName = path.basename(req.file.filename, path.extname(req.file.filename));
+      const newFilename = `${baseName}-transparent.png`;
+      const newPath = path.join(path.dirname(req.file.path), newFilename);
+      
+      // Write the isolated PNG to disk
+      fs.writeFileSync(newPath, transparentBuffer);
+      
+      // Delete original uploaded file
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.warn('Failed to delete original file temp path:', err.message);
+      }
+      
+      // Update req.file details
+      req.file.path = newPath;
+      req.file.filename = newFilename;
+      req.file.mimetype = 'image/png';
+      
+      // Update fileBuffer to compute the correct hash of the isolated PNG
+      fileBuffer = transparentBuffer;
+    }
+
     const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
     const existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash });
@@ -278,4 +367,112 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// POST /api/clothing/tryon — Render virtual try-on on avatar
+router.post('/tryon', auth, upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'model_image', maxCount: 1 }
+]), async (req, res) => {
+  let tempFilePath = null;
+  let tempModelPath = null;
+  try {
+    const { gender, type, clothingId } = req.body;
+    
+    const garmentFile = req.files && req.files.image ? req.files.image[0] : null;
+    const modelFile = req.files && req.files.model_image ? req.files.model_image[0] : null;
+
+    if (!gender || !type) {
+      if (garmentFile) fs.unlinkSync(garmentFile.path);
+      if (modelFile) fs.unlinkSync(modelFile.path);
+      return res.status(400).json({ message: 'Gender and type are required' });
+    }
+
+    let imageStream = null;
+
+    if (clothingId && clothingId !== 'null' && clothingId !== 'undefined') {
+      // Use existing wardrobe item
+      const item = await Clothing.findOne({ _id: clothingId, userId: req.userId });
+      if (!item) {
+        if (garmentFile) fs.unlinkSync(garmentFile.path);
+        if (modelFile) fs.unlinkSync(modelFile.path);
+        return res.status(404).json({ message: 'Wardrobe item not found' });
+      }
+      
+      const imagePath = path.join(__dirname, '..', item.imageUrl);
+      if (!fs.existsSync(imagePath)) {
+        if (garmentFile) fs.unlinkSync(garmentFile.path);
+        if (modelFile) fs.unlinkSync(modelFile.path);
+        return res.status(404).json({ message: 'Wardrobe image file not found on disk' });
+      }
+      imageStream = fs.createReadStream(imagePath);
+      
+      // Clean up uploaded file if the client sent both
+      if (garmentFile) {
+        fs.unlinkSync(garmentFile.path);
+      }
+    } else {
+      // Use uploaded image file
+      if (!garmentFile) {
+        if (modelFile) fs.unlinkSync(modelFile.path);
+        return res.status(400).json({ message: 'Image or clothingId is required' });
+      }
+      imageStream = fs.createReadStream(garmentFile.path);
+      tempFilePath = garmentFile.path;
+    }
+
+    console.log(`🧠 Express forwarding try-on to local AI service: gender=${gender}, type=${type}`);
+    const formData = new FormData();
+    formData.append('image', imageStream);
+    formData.append('gender', gender);
+    formData.append('type', type);
+    
+    if (modelFile) {
+      formData.append('model_image', fs.createReadStream(modelFile.path));
+      tempModelPath = modelFile.path;
+    }
+
+    const aiResponse = await fetch('http://localhost:8000/virtual-tryon', {
+      method: 'POST',
+      body: formData,
+      headers: formData.getHeaders(),
+      timeout: 120000 // 2-minute timeout for VTON processing
+    });
+
+    // Clean up uploaded temp files immediately if present
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (err) {}
+    }
+    if (tempModelPath && fs.existsSync(tempModelPath)) {
+      try {
+        fs.unlinkSync(tempModelPath);
+      } catch (err) {}
+    }
+
+    if (aiResponse.ok) {
+      res.setHeader('Content-Type', 'image/png');
+      aiResponse.body.pipe(res);
+    } else {
+      const errorText = await aiResponse.text();
+      console.error('AI Service virtual-tryon failed:', errorText);
+      res.status(500).json({ message: `AI Service tryon failed: ${errorText}` });
+    }
+
+  } catch (err) {
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (e) {}
+    }
+    if (tempModelPath && fs.existsSync(tempModelPath)) {
+      try {
+        fs.unlinkSync(tempModelPath);
+      } catch (e) {}
+    }
+    console.error('Virtual try-on error:', err);
+    res.status(500).json({ message: 'Failed to process virtual try-on' });
+  }
+});
+
 module.exports = router;
+

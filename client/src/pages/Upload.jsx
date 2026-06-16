@@ -268,6 +268,7 @@ export default function Upload() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   // Trigger background removal on original image changes
+  /* Comment out frontend local background removal process to eliminate UI lag
   useEffect(() => {
     if (!originalUrl || !autoRemove) {
       setBgRemovedBlob(null);
@@ -281,7 +282,6 @@ export default function Upload() {
         const result = await processImageFloodFill(originalUrl, keyColor, tolerance);
         setBgRemovedBlob(result.blob);
         
-        // Clean up previous processed url to avoid memory leaks
         if (bgRemovedUrl) URL.revokeObjectURL(bgRemovedUrl);
         
         const newUrl = URL.createObjectURL(result.blob);
@@ -296,9 +296,10 @@ export default function Upload() {
       } finally {
         setProcessing(false);
       }
-    }, 300); // Debounce slider inputs
+    }, 300);
 
   }, [originalUrl, keyColor, tolerance, autoRemove]);
+  */
 
   // Auto-cycle fashion quotes during active upload loading stage (max 2 quotes, slower 3s interval)
   useEffect(() => {
@@ -459,10 +460,12 @@ export default function Upload() {
     if (!originalFile) return error('Please select an image');
     if (!formData.name) return error('Please provide a name');
 
+    /* Comment out imperfect background removal blocking
     if (autoRemove && isBgRemovalImperfect) {
       error('Upload Blocked: The background of your photo was not removed properly. Please re-upload a different photo with a plain, clean background for correct isolation.');
       return;
     }
+    */
 
     setLoading(true);
     
@@ -479,13 +482,8 @@ export default function Upload() {
     const startTime = Date.now();
     const data = new FormData();
     
-    // Choose between processed transparent png blob or original file
-    if (autoRemove && bgRemovedBlob) {
-      // Append as PNG file
-      data.append('image', bgRemovedBlob, `${formData.name.toLowerCase().replace(/\s+/g, '-')}-transparent.png`);
-    } else {
-      data.append('image', originalFile);
-    }
+    // Append the original file directly to be processed by the server-side AI API
+    data.append('image', originalFile);
 
     data.append('name', formData.name);
     data.append('category', formData.category);
@@ -656,17 +654,10 @@ export default function Upload() {
                   <button className="btn btn-icon btn-remove-img" onClick={(e) => { e.stopPropagation(); clearFile(); }} title="Remove image">
                     <IconX />
                   </button>
-                  {!processing && bgRemovedUrl && (
-                    isBgRemovalImperfect ? (
-                      <div className="bg-removed-badge warning" style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
-                        🛑 Background Removal Imperfect
-                      </div>
-                    ) : (
-                      <div className="bg-removed-badge">✂️ Background removed</div>
-                    )
-                  )}
-                  {processing && (
-                    <div className="bg-removed-badge processing">⏳ Removing background...</div>
+                  {originalUrl && (
+                    <div className="bg-removed-badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: 'var(--accent-violet-light)', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                      ✨ Zyntra AI Background Isolation Active
+                    </div>
                   )}
                   <div className="preview-overlay" onClick={() => fileInputRef.current?.click()}>
                     <IconImage />
