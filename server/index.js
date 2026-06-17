@@ -10,6 +10,7 @@ const clothingRoutes = require('./routes/clothing');
 const outfitRoutes = require('./routes/outfits');
 const recommendRoutes = require('./routes/recommendations');
 const imageSearchRoutes = require('./routes/imagesearch');
+const tryOnRoutes = require('./routes/tryon');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +28,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded images as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve default try-on templates
+app.use('/models', express.static(path.join(__dirname, '..', 'VirtualTryOn', 'models')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -34,6 +37,7 @@ app.use('/api/clothing', clothingRoutes);
 app.use('/api/outfits', outfitRoutes);
 app.use('/api/recommend', recommendRoutes);
 app.use('/api/imagesearch', imageSearchRoutes);
+app.use('/api/tryon', tryOnRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

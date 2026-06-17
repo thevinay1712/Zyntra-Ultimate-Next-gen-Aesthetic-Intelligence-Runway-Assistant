@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clothingAPI, outfitAPI } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import ClothingCard from '../components/ClothingCard';
@@ -486,6 +487,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
 }
 
 export default function Outfits() {
+  const navigate = useNavigate();
   const [clothes, setClothes] = useState([]);
   const [savedOutfits, setSavedOutfits] = useState([]);
   const [activeSlot, setActiveSlot] = useState(null);
@@ -688,7 +690,7 @@ export default function Outfits() {
       <div className="container">
         <div className="dashboard-header animate-fade-in">
           <div>
-            <h1 className="dashboard-title">Outfit Builder</h1>
+            <h1 className="dashboard-title">Build your Outfit</h1>
             <p className="dashboard-subtitle">Mix and match to create the perfect look</p>
           </div>
         </div>
@@ -703,12 +705,12 @@ export default function Outfits() {
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => {
-                    success('Avatar Try-On is planned as a future premium upgrade! 🚀');
+                    navigate('/avatar');
                   }}
                   disabled={!builderState.top && !builderState.bottom}
-                  title="Try this combination on your custom avatar"
+                  title="Try this combination on a model"
                 >
-                  ✨ Try On Avatar
+                  ✨ Try On Model
                 </button>
                 <button className="btn btn-ghost btn-sm" onClick={handleClearAll} title="Reset canvas">
                   <IconRefresh /> Reset
@@ -819,9 +821,9 @@ export default function Outfits() {
                           <button
                             className="btn btn-icon btn-ghost btn-trash"
                             onClick={() => {
-                              success('Avatar Try-On is planned as a future premium upgrade! 🚀');
+                              navigate('/avatar');
                             }}
-                            title="Try On Avatar"
+                            title="Try On Model"
                           >
                             ✨
                           </button>

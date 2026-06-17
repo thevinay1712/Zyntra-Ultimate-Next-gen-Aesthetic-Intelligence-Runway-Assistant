@@ -10,7 +10,6 @@ import Recommend from './pages/Recommend';
 import Avatar from './pages/Avatar';
 import Navbar from './components/Navbar';
 import Toast from './components/Toast';
-import ParticleCanvas from './components/ParticleCanvas';
 import { ToastProvider } from './context/ToastContext';
 import './App.css';
 
@@ -33,7 +32,6 @@ function AppContent() {
 
   return (
     <>
-      <ParticleCanvas />
       {user && <Navbar />}
       <Routes>
         <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />

@@ -217,7 +217,7 @@ export default function Landing() {
               { Icon: IconCamera, title: 'Smart Upload', desc: 'Snap a photo, and Zyntra auto-detects colors, category, and season. Your wardrobe, digitized in seconds.', color: '#8b5cf6', glow: 'rgba(139,92,246,0.15)' },
               { Icon: IconSearch, title: 'Filter & Search', desc: 'Find any piece instantly. Filter by color, category, season, occasion — or search by name.', color: '#3b82f6', glow: 'rgba(59,130,246,0.15)' },
               { Icon: IconCpu, title: 'AI Recommendations', desc: 'Get outfit suggestions based on color theory and occasion matching. Never overdress or underdress.', color: '#f43f5e', glow: 'rgba(244,63,94,0.15)' },
-              { Icon: IconUser, title: 'Virtual Avatar', desc: 'Preview outfits on a simple avatar before getting dressed. Mix and match to find the perfect look.', color: '#10b981', glow: 'rgba(16,185,129,0.15)', isFutureUpgrade: true },
+              { Icon: IconUser, title: 'Virtual Try-On', desc: 'Preview outfits on a simple avatar before getting dressed. Mix and match to find the perfect look.', color: '#10b981', glow: 'rgba(16,185,129,0.15)' },
               { Icon: IconHeart, title: 'Save Outfits', desc: 'Love a combo? Save it. Build a library of go-to outfits for any occasion.', color: '#f59e0b', glow: 'rgba(245,158,11,0.15)' },
               { Icon: IconSun, title: 'Weather Aware', desc: 'Zyntra checks local weather and adapts suggestions — light layers for spring, cozy picks for winter.', color: '#06b6d4', glow: 'rgba(6,182,212,0.15)' },
             ].map((feature, i) => (

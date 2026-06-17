@@ -139,9 +139,6 @@ export default function Dashboard() {
               {clothes.length} item{clothes.length !== 1 ? 's' : ''} organized
             </p>
           </div>
-          <Link to="/upload" className="btn btn-primary" id="btn-add-clothes">
-            <IconPlus /> Add Clothes
-          </Link>
         </div>
 
         {/* Category Pills */}
@@ -357,7 +354,7 @@ export default function Dashboard() {
                   </div>
                   <input
                     type="text"
-                    placeholder="Press Enter to add tag"
+                    placeholder="Any memories you own. Press Enter once done."
                     value={modalTagInput}
                     onChange={(e) => setModalTagInput(e.target.value)}
                     onKeyDown={(e) => {
