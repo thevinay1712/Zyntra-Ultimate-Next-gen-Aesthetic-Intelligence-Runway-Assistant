@@ -235,10 +235,9 @@ export default function Upload() {
   const [originalUrl, setOriginalUrl] = useState(null);
   const [bgRemovedBlob, setBgRemovedBlob] = useState(null);
   const [bgRemovedUrl, setBgRemovedUrl] = useState(null);
-  const [scannedItem, setScannedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [activeQuote, setActiveQuote] = useState(null);
-  const [quotesShownCount, setQuotesShownCount] = useState(1);
+  const [isClosing, setIsClosing] = useState(false);
 
   // Background removal settings
   const [autoRemove, setAutoRemove] = useState(true);
@@ -301,31 +300,7 @@ export default function Upload() {
   }, [originalUrl, keyColor, tolerance, autoRemove]);
   */
 
-  // Auto-cycle fashion quotes during active upload loading stage (max 2 quotes, slower 3s interval)
-  useEffect(() => {
-    if (!showModal || scannedItem || quotesShownCount >= 2) return;
-    
-    const interval = setInterval(() => {
-      setQuotesShownCount((prev) => {
-        if (prev >= 2) {
-          clearInterval(interval);
-          return prev;
-        }
-        
-        setActiveQuote((prevQuote) => {
-          let newQuote = prevQuote;
-          while (!newQuote || newQuote.text === prevQuote?.text) {
-            newQuote = FASHION_QUOTES[Math.floor(Math.random() * FASHION_QUOTES.length)];
-          }
-          return newQuote;
-        });
-        
-        return prev + 1;
-      });
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [showModal, scannedItem, quotesShownCount]);
+
 
   const handleFile = (selectedFile) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -475,9 +450,7 @@ export default function Upload() {
       newQuote = FASHION_QUOTES[Math.floor(Math.random() * FASHION_QUOTES.length)];
     }
     setActiveQuote(newQuote);
-    setQuotesShownCount(1); // Reset quote counter for new upload
     setShowModal(true);
-    setScannedItem(null); // Clear previous if any
 
     const startTime = Date.now();
     const data = new FormData();
@@ -494,25 +467,23 @@ export default function Upload() {
     data.append('tags', JSON.stringify(tags));
 
     try {
-      const response = await clothingAPI.upload(data);
-      const clothing = response.data?.clothing;
-      
+      await clothingAPI.upload(data);
       success('Item added to your wardrobe successfully!');
-      
-      if (clothing) {
-        setScannedItem(clothing);
-        // Wait 300ms so they see a brief flash of the Closet AI scanned details snappily
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 300);
-      } else {
+      setIsClosing(true);
+      setTimeout(() => {
         setShowModal(false);
+        setIsClosing(false);
+        setLoading(false);
         navigate('/dashboard');
-      }
+      }, 400); // Wait 400ms for exit animation
     } catch (err) {
-      setShowModal(false); // Hide modal so user is not stuck on crash
+      setIsClosing(true);
+      setTimeout(() => {
+        setShowModal(false);
+        setIsClosing(false);
+        setLoading(false);
+      }, 400);
       error(err.response?.data?.message || 'Failed to upload item');
-      setLoading(false);
     }
   };
 
@@ -533,8 +504,8 @@ export default function Upload() {
     <div className="main-content" id="upload-page">
       <div className="container">
         <div className="upload-header animate-fade-in">
-          <h1 className="dashboard-title">Add to Wardrobe</h1>
-          <p className="dashboard-subtitle">Digitize a new piece of clothing with visual adjustments</p>
+          <h1 className="dashboard-title">Add to your Wardrobe</h1>
+          <p className="dashboard-subtitle">Upload a photo of your clothing to add it to your digital wardrobe</p>
         </div>
 
         {/* Upload Guidelines Card */}
@@ -549,78 +520,29 @@ export default function Upload() {
           </div>
         </div>
 
-        {/* AI Scan Summary Box (Rendered as Modal to fix Cumulative Layout Shift and enhance SEO) */}
+        {/* Quote Loading Modal Overlay */}
         {showModal && (
-          <div className="modal-overlay tryon-modal animate-fade-in" style={{ zIndex: 1000 }}>
-            {!scannedItem ? (
-              /* STAGE 1: Inspirational Quote Loading Panel */
-              <div className="modal-content glass-card animate-slide-up" style={{ maxWidth: '550px', padding: '40px', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.3)', background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.96) 0%, rgba(10, 12, 20, 0.99) 100%)', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
-                <div className="quote-loader-circle" style={{ marginBottom: '24px' }}>
-                  <div className="quote-loader-spin" />
-                  <span style={{ fontSize: '2rem', zIndex: 2 }}>✨</span>
-                </div>
-                
-                <div className="quote-body" style={{ margin: '20px 0' }}>
-                  <span className="quote-icon" style={{ fontSize: '3rem', color: 'rgba(139, 92, 246, 0.4)', display: 'block', height: '30px', lineHeight: '1' }}>“</span>
-                  <p className="quote-text font-heading animate-fade-in" style={{ fontSize: '1.05rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.9)', margin: '12px 0', fontStyle: 'italic', fontWeight: 600 }}>
-                    {activeQuote?.text}
-                  </p>
-                  <span className="quote-author" style={{ fontSize: '0.813rem', color: 'var(--accent-violet-light)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                    — {activeQuote?.author}
-                  </span>
-                </div>
-
-                <p style={{ color: 'var(--text-tertiary)', fontSize: '0.813rem', margin: '20px 0 0 0' }}>
-                  🧠 Digitizing and analyzing your fashion items in the background...
+          <div className={`quote-modal-overlay animate-fade-in ${isClosing ? 'closing' : ''}`}>
+            <div className={`quote-modal-box animate-slide-up ${isClosing ? 'closing' : ''}`}>
+              <div className="quote-loader-circle" style={{ marginBottom: '16px' }}>
+                <div className="quote-loader-spin" />
+                <span style={{ fontSize: '1.5rem', zIndex: 2 }}>✨</span>
+              </div>
+              
+              <div className="quote-body" style={{ margin: '14px 0' }}>
+                <span className="quote-icon" style={{ fontSize: '2rem', color: 'rgba(139, 92, 246, 0.4)', display: 'block', height: '20px', lineHeight: '1' }}>“</span>
+                <p className="quote-text font-heading animate-fade-in" style={{ fontSize: '0.925rem', lineHeight: '1.5', color: 'rgba(255, 255, 255, 0.9)', margin: '8px 0', fontStyle: 'italic', fontWeight: 600 }}>
+                  {activeQuote?.text}
                 </p>
+                <span className="quote-author" style={{ fontSize: '0.725rem', color: 'var(--accent-violet-light)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  — {activeQuote?.author}
+                </span>
               </div>
-            ) : (
-              /* STAGE 2: Scanned Fashion Metrics Panel (Digitization Complete) */
-              <div className="modal-content glass-card animate-slide-up" style={{ maxWidth: '600px', padding: '40px', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.3)', background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.96) 0%, rgba(10, 12, 20, 0.99) 100%)', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
-                <div style={{ fontSize: '3.5rem', marginBottom: '20px' }}>✨</div>
-                <h3 className="font-heading" style={{ color: 'var(--accent-violet-light)', marginBottom: '8px', fontSize: '1.5rem', fontWeight: 800 }}>Closet AI Digitization Complete!</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.938rem', marginBottom: '28px' }}>Zyntra vision engine successfully scanned and cataloged your garment.</p>
-                
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '28px' }}>
-                  <div style={badgeItemStyle}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Aesthetic</span>
-                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.aesthetic}</strong>
-                  </div>
 
-                  {!['shoes', 'accessories'].includes(scannedItem.category) && (
-                    <>
-                      <div style={badgeItemStyle}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pattern</span>
-                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.pattern}</strong>
-                      </div>
-                      <div style={badgeItemStyle}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fit</span>
-                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{scannedItem.fit}</strong>
-                      </div>
-                    </>
-                  )}
-
-                  <div style={badgeItemStyle}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Upload Quality</span>
-                    <strong style={{ color: scannedItem.uploadQuality === 'Good' ? '#10b981' : '#f59e0b', fontSize: '1rem' }}>{scannedItem.uploadQuality}</strong>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                  <button 
-                    type="button" 
-                    className="btn btn-primary"
-                    onClick={() => navigate('/dashboard')}
-                    style={{ minWidth: '180px' }}
-                  >
-                    Go to Wardrobe
-                  </button>
-                  <p style={{ color: 'var(--text-tertiary)', fontSize: '0.813rem', fontStyle: 'italic', margin: 0 }}>
-                    Automatically redirecting in a few seconds...
-                  </p>
-                </div>
-              </div>
-            )}
+              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', margin: '12px 0 0 0' }}>
+                🧠 Digitizing and analyzing your fashion items in the background...
+              </p>
+            </div>
           </div>
         )}
 
@@ -645,6 +567,12 @@ export default function Upload() {
 
               {originalUrl ? (
                 <div className="preview-container">
+                  {/* Blurred backdrop to fill different aspect ratios beautifully without layout shifts */}
+                  <img
+                    src={currentPreviewSrc}
+                    alt="Preview blur backdrop"
+                    className="image-preview-backdrop"
+                  />
                   <img
                     ref={imageElementRef}
                     src={currentPreviewSrc}
@@ -809,7 +737,7 @@ export default function Upload() {
                 className="advanced-toggle font-heading"
                 onClick={() => setShowAdvanced(!showAdvanced)}
               >
-                <span>🚀 Stylist Details (Optional)</span>
+                <span>Want to add more info ?</span>
                 <IconChevronDown open={showAdvanced} />
               </button>
 
@@ -894,7 +822,7 @@ export default function Upload() {
                       </div>
                       <input
                         type="text"
-                        placeholder="Add tag and press Enter"
+                        placeholder="Any memories you own. Press Enter once done."
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={handleAddTag}
@@ -919,7 +847,7 @@ export default function Upload() {
                 id="btn-upload-submit"
                 title={isBgRemovalImperfect ? 'Background removal imperfect — please re-upload with a plain background' : ''}
               >
-                {loading ? <span className="loader-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Add to Wardrobe'}
+                {loading ? <span className="loader-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Add to your Wardrobe'}
               </button>
             </div>
           </form>

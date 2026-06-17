@@ -1,975 +1,622 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import { clothingAPI } from '../lib/api';
 import './Avatar.css';
 
-/* SVG Icons */
+/* ─── Icons ─── */
 const IconSparkles = () => (
-  <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+  <svg viewBox="0 0 24 24" className="icon icon-sm" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+);
+const IconDownload = () => (
+  <svg viewBox="0 0 24 24" className="icon icon-sm" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 );
 const IconRefresh = () => (
-  <svg viewBox="0 0 24 24" className="icon"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+  <svg viewBox="0 0 24 24" className="icon icon-sm" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+);
+const IconCheck = () => (
+  <svg viewBox="0 0 24 24" className="icon icon-sm" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+);
+const IconWand = () => (
+  <svg viewBox="0 0 24 24" className="icon" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 4-1 1"/><path d="m9 9-1 1"/><path d="m19 19-1 1"/><path d="M4 20l7.5-7.5"/><path d="m20 4-7.5 7.5"/></svg>
 );
 
-const SKIN_TONES = [
-  { id: 'pale', color: '#fff0eb', label: 'Pale' },
-  { id: 'fair', color: '#ffd6c9', label: 'Fair' },
-  { id: 'olive', color: '#eca786', label: 'Olive' },
-  { id: 'bronze', color: '#c8855f', label: 'Bronze' },
-  { id: 'dark', color: '#724933', label: 'Deep' }
-];
+const SCHEMATIC_CONFIG = {
+  male: {
+    tshirt: {
+      label: "Top (Shirt / Torso Fit)",
+      hotspot: { top: '18%', left: '38%', width: '24%', height: '28%' },
+      line: { startX: 50, startY: 32, endX: 26, endY: 32, isLeft: true }
+    },
+    jeans: {
+      label: "Bottom (Pants / Waist Fit)",
+      hotspot: { top: '46%', left: '40%', width: '20%', height: '44%' },
+      line: { startX: 50, startY: 68, endX: 74, endY: 68, isLeft: false }
+    },
+    shoes: {
+      label: "Shoes (Footwear / Sole Fit)",
+      hotspot: { top: '90%', left: '39%', width: '22%', height: '8%' },
+      line: { startX: 50, startY: 94, endX: 26, endY: 82, isLeft: true }
+    },
+    accessory: {
+      label: "Accessory (Wrist / Watch Fit)",
+      hotspot: { top: '48%', left: '61%', width: '4%', height: '5%' },
+      line: { startX: 63, startY: 50, endX: 74, endY: 50, isLeft: false }
+    },
+    outerwear: {
+      label: "Outerwear (Blazer / Jacket Fit)",
+      hotspot: { top: '17%', left: '34%', width: '32%', height: '31%' },
+      line: { startX: 50, startY: 33, endX: 26, endY: 33, isLeft: true }
+    }
+  },
+  female: {
+    tshirt: {
+      label: "Top (Shirt / Torso Fit)",
+      hotspot: { top: '16%', left: '39%', width: '22%', height: '33%' },
+      line: { startX: 50, startY: 32.5, endX: 26, endY: 32.5, isLeft: true }
+    },
+    jeans: {
+      label: "Bottom (Pants / Waist Fit)",
+      hotspot: { top: '48%', left: '40%', width: '20%', height: '44%' },
+      line: { startX: 50, startY: 72, endX: 74, endY: 72, isLeft: false }
+    },
+    shoes: {
+      label: "Shoes (Footwear / Sole Fit)",
+      hotspot: { top: '90%', left: '39%', width: '22%', height: '8%' },
+      line: { startX: 50, startY: 93.5, endX: 26, endY: 82, isLeft: true }
+    },
+    accessory: {
+      label: "Accessory (Wrist / Watch Fit)",
+      hotspot: { top: '48%', left: '61%', width: '4%', height: '5%' },
+      line: { startX: 63, startY: 50, endX: 74, endY: 50, isLeft: false }
+    },
+    outerwear: {
+      label: "Outerwear (Blazer / Jacket Fit)",
+      hotspot: { top: '15%', left: '35%', width: '30%', height: '35%' },
+      line: { startX: 50, startY: 32.5, endX: 26, endY: 32.5, isLeft: true }
+    }
+  }
+};
 
-const HAIR_COLORS = [
-  { id: 'black', color: '#1a1a1a', label: 'Ebony' },
-  { id: 'brown', color: '#624637', label: 'Chestnut' },
-  { id: 'blonde', color: '#debe7d', label: 'Honey' },
-  { id: 'red', color: '#a93b29', label: 'Crimson' },
-  { id: 'purple', color: '#6b3074', label: 'Amethyst' },
-  { id: 'cyan', color: '#13838a', label: 'Neon' }
-];
+const PATH_CONFIGS = {
+  male: {
+    tshirt: "M 46 18 L 54 18 L 61 22 L 63 32 L 58 32 L 57 46 L 43 46 L 42 32 L 37 32 L 39 22 Z",
+    jeans: "M 42 45 L 58 45 L 57 68 L 54 90 L 49 90 L 50 62 L 46 90 L 41 90 L 43 68 Z",
+    shoes: "M 39 90 L 47 90 L 47 96 L 39 96 Z M 53 90 L 61 90 L 61 96 L 53 96 Z",
+    accessory: "M 61 48 L 64 48 L 64 53 L 61 53 Z",
+    outerwear: "M 45 17 L 55 17 L 63 21 L 66 48 L 62 48 L 59 48 L 41 48 L 38 48 L 34 48 L 37 21 Z"
+  },
+  female: {
+    tshirt: "M 47 16 L 53 16 L 61 20 L 63 30 L 58 30 L 57 48 L 43 48 L 42 30 L 37 30 L 39 20 Z",
+    jeans: "M 43 48 L 57 48 L 57 72 L 54 92 L 49 92 L 50 65 L 46 92 L 41 92 L 43 72 Z",
+    shoes: "M 39 92 L 47 92 L 47 97 L 39 97 Z M 53 92 L 61 92 L 61 97 L 53 97 Z",
+    accessory: "M 61 48 L 64 48 L 64 53 L 61 53 Z",
+    outerwear: "M 45 15 L 55 15 L 62 19 L 65 48 L 61 48 L 58 50 L 42 50 L 39 48 L 35 48 L 38 19 Z"
+  }
+};
 
-const HAIR_STYLES = [
-  { id: 'messy', label: 'Messy Shag' },
-  { id: 'waves', label: 'Long Waves' },
-  { id: 'crop', label: 'Textured Crop' },
-  { id: 'curly', label: 'Curly Afro' },
-  { id: 'sidepart', label: 'Side Part' },
-  { id: 'bald', label: 'Shaved' }
-];
+const getGarmentPath = (genderKey, typeKey, activeConfig) => {
+  const genderConfigs = PATH_CONFIGS[genderKey];
+  if (genderConfigs && genderConfigs[typeKey]) {
+    return genderConfigs[typeKey];
+  }
+  if (activeConfig && activeConfig.hotspot) {
+    const left = parseFloat(activeConfig.hotspot.left);
+    const top = parseFloat(activeConfig.hotspot.top);
+    const width = parseFloat(activeConfig.hotspot.width);
+    const height = parseFloat(activeConfig.hotspot.height);
+    return `M ${left} ${top} L ${left + width} ${top} L ${left + width} ${top + height} L ${left} ${top + height} Z`;
+  }
+  return '';
+};
 
-const EXPRESSIONS = [
-  { id: 'smile', label: 'Cheerful 😊' },
-  { id: 'cool', label: 'Stylist 😎' },
-  { id: 'neutral', label: 'Calm 😌' }
-];
+const API_BASE = `http://${window.location.hostname}:5000/api`;
+const AI_BASE  = `http://${window.location.hostname}:8000`;
 
 export default function Avatar() {
-  const [settings, setSettings] = useState({
-    gender: 'male',
-    skin: 'olive',
-    hair: 'messy',
-    hairColor: 'black',
-    expression: 'smile',
-    hasBeard: true
-  });
+  const getPixelCoordinates = (config) => {
+    if (!config) return null;
+    const { line } = config;
+    const wrapWidth = 270;
+    const wrapHeight = 360;
+    const offsetLeft = 105;
+    
+    const startX = offsetLeft + wrapWidth * (parseFloat(line.startX) / 100);
+    const startY = wrapHeight * (parseFloat(line.startY) / 100);
+    
+    // Position the arrow endX exactly at the border of the card
+    const endX = line.isLeft ? (offsetLeft - 15) : (offsetLeft + wrapWidth + 15);
+    const endY = wrapHeight * (parseFloat(line.endY) / 100);
+    
+    return { startX, startY, endX, endY, isLeft: line.isLeft };
+  };
 
-  const [rotation, setRotation] = useState(0);
-  const [autoRotate, setAutoRotate] = useState(false);
+  const [gender, setGender]                   = useState('male');
+  const [modelType, setModelType]             = useState('default');
+  const [customModelFile, setCustomModelFile] = useState(null);
+  const [customModelPreview, setCustomModelPreview] = useState(null);
+  const [garmentType, setGarmentType]         = useState('tshirt');
+  const [source, setSource]                   = useState('upload');
+  const [selectedItem, setSelectedItem]       = useState(null);
+  const [uploadedFile, setUploadedFile]       = useState(null);
+  const [uploadedPreview, setUploadedPreview] = useState(null);
+
+  const [wardrobeItems, setWardrobeItems]     = useState([]);
+  const [loadingWardrobe, setLoadingWardrobe] = useState(false);
+
+  /* Try-on result */
+  const [resultUrl, setResultUrl]   = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMsg, setProcessingMsg] = useState('');
+  const [elapsedSecs, setElapsedSecs] = useState(0);
+  const timerRef = useRef(null);
+
   const { success, error } = useToast();
-  const navigate = useNavigate();
-  const [interested, setInterested] = useState(() => {
-    return localStorage.getItem('zyntra_avatar_interest') === 'true';
-  });
 
-  // Webcam camera scanner states & refs
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraLoading, setCameraLoading] = useState(false);
-  const [scanningFace, setScanningFace] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const videoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-
-  const startCamera = async () => {
-    setCameraLoading(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 400 } });
-      mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraActive(true);
-    } catch (err) {
-      console.error('Camera access failed:', err);
-      error('Could not access camera. Please check permissions.');
-    } finally {
-      setCameraLoading(false);
-    }
-  };
-
-  const stopCamera = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  const captureSelfie = () => {
-    if (!videoRef.current) return;
-    setScanningFace(true);
-
-    setTimeout(() => {
-      // Analyze dominant color in the photo to predict skin/hair color
-      const canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 200;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(videoRef.current, 0, 0, 200, 200);
-
-      // DOMINANT PIXEL CHECK FOR SKIN/HAIR DETECTION
-      const imageData = ctx.getImageData(50, 50, 100, 100).data;
-      let rSum = 0, gSum = 0, bSum = 0;
-      for (let i = 0; i < imageData.length; i += 4) {
-        rSum += imageData[i];
-        gSum += imageData[i + 1];
-        bSum += imageData[i + 2];
-      }
-      const count = imageData.length / 4;
-      const r = rSum / count;
-      const g = gSum / count;
-
-      // Predict skin tone from rgb values
-      let predictedSkin = 'olive';
-      if (r > 220 && g > 180) predictedSkin = 'pale';
-      else if (r > 200 && g > 160) predictedSkin = 'fair';
-      else if (r > 140 && g > 100) predictedSkin = 'olive';
-      else if (r > 90 && g > 60) predictedSkin = 'bronze';
-      else predictedSkin = 'dark';
-
-      // Predict hair color
-      let predictedHairColor = 'black';
-      if (r < 75 && g < 75) predictedHairColor = 'black';
-      else if (r > 90 && g > 60) predictedHairColor = 'brown';
-      
-      const hairStyles = ['messy', 'waves', 'crop', 'curly', 'sidepart'];
-      const predictedHair = hairStyles[Math.floor(Math.random() * hairStyles.length)];
-      
-      const newSettings = {
-        gender: settings.gender,
-        skin: predictedSkin,
-        hair: predictedHair,
-        hairColor: predictedHairColor,
-        expression: 'cool',
-        hasBeard: settings.gender === 'male' // match user's awesome bearded reference photo!
-      };
-
-      setSettings(newSettings);
-      localStorage.setItem('zyntra_avatar', JSON.stringify(newSettings));
-      
-      setScanningFace(false);
-      stopCamera();
-      success('3D Claymation Avatar rendered successfully from selfie! 📸');
-    }, 2000);
-  };
-
-  // Drag-to-rotate states
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragStartRot, setDragStartRot] = useState(0);
-
-  const handleDragStart = (e) => {
-    setIsDragging(true);
-    setDragStartX(e.clientX);
-    setDragStartRot(rotation);
-    setAutoRotate(false);
-  };
-
-  const handleDragMove = (e) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - dragStartX;
-    const newRot = (dragStartRot + deltaX * 0.75) % 360;
-    setRotation(newRot < 0 ? newRot + 360 : newRot);
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e) => {
-    if (e.touches.length !== 1) return;
-    setIsDragging(true);
-    setDragStartX(e.touches[0].clientX);
-    setDragStartRot(rotation);
-    setAutoRotate(false);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const deltaX = e.touches[0].clientX - dragStartX;
-    const newRot = (dragStartRot + deltaX * 0.75) % 360;
-    setRotation(newRot < 0 ? newRot + 360 : newRot);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
-  const handleWheel = (e) => {
-    const delta = e.deltaY;
-    const speed = 0.25; // elegant smooth wheel scroll speed
-    const newRot = (rotation + delta * speed) % 360;
-    setRotation(newRot < 0 ? newRot + 360 : newRot);
-    setAutoRotate(false);
-  };
-
-  // Load configuration from local storage
+  /* Load wardrobe */
   useEffect(() => {
-    const stored = localStorage.getItem('zyntra_avatar');
-    if (stored) {
-      setSettings(JSON.parse(stored));
-    }
+    (async () => {
+      setLoadingWardrobe(true);
+      try {
+        const token = localStorage.getItem('zyntra_token');
+        const res = await fetch(`${API_BASE}/clothing`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.clothes) setWardrobeItems(data.clothes);
+      } catch (_) {}
+      finally { setLoadingWardrobe(false); }
+    })();
   }, []);
 
-  // Spin rotation interval loop
-  useEffect(() => {
-    let interval = null;
-    if (autoRotate) {
-      interval = setInterval(() => {
-        setRotation((prev) => (prev + 45) % 360);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [autoRotate]);
+  /* Derived */
+  const modelUrl = modelType === 'custom'
+    ? customModelPreview
+    : `http://${window.location.hostname}:5000/models/${gender}_model.png`;
 
-  const updateSetting = (key, value) => {
-    const updated = { ...settings, [key]: value };
-    setSettings(updated);
-    localStorage.setItem('zyntra_avatar', JSON.stringify(updated));
+  const activeGarmentUrl = source === 'wardrobe' && selectedItem
+    ? `http://${window.location.hostname}:5000${selectedItem.imageUrl}`
+    : uploadedPreview || null;
+
+  const activeGarmentName = source === 'wardrobe' && selectedItem
+    ? selectedItem.name
+    : uploadedFile?.name || null;
+
+  const categoryMap = {
+    tshirt: 'tops',
+    jeans: 'bottoms',
+    shoes: 'shoes',
+    outerwear: 'outerwear',
+    accessory: 'accessories'
   };
 
-  const handleRandomize = () => {
-    const randomSkin = SKIN_TONES[Math.floor(Math.random() * SKIN_TONES.length)].id;
-    const randomHair = HAIR_STYLES[Math.floor(Math.random() * HAIR_STYLES.length)].id;
-    const randomHairColor = HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)].id;
-    const randomExpr = EXPRESSIONS[Math.floor(Math.random() * EXPRESSIONS.length)].id;
-    const randomGender = Math.random() > 0.5 ? 'male' : 'female';
+  const activeConfig = SCHEMATIC_CONFIG[gender]?.[garmentType];
 
-    const randomized = {
-      gender: randomGender,
-      skin: randomSkin,
-      hair: randomHair,
-      hairColor: randomHairColor,
-      expression: randomExpr
-    };
-
-    setSettings(randomized);
-    localStorage.setItem('zyntra_avatar', JSON.stringify(randomized));
-    success('Avatar Randomized!');
-  };
-
-  const handleInterestClick = () => {
-    if (interested) return;
-    setInterested(true);
-    localStorage.setItem('zyntra_avatar_interest', 'true');
-    success("Thank you for your feedback! Your interest in the Virtual Try-On feature has been recorded. 👍");
-  };
-
-  const activeSkinColor = SKIN_TONES.find((s) => s.id === settings.skin)?.color || '#eca786';
-  const activeHairColor = HAIR_COLORS.find((c) => c.id === settings.hairColor)?.color || '#1a1a1a';
-  const { gender, skin, hair, hairColor, expression } = settings;
-
-  // Render Premium Glassmorphic Coming Soon View (Underlying 800 lines of original avatar code completely preserved!)
-  return (
-    <div className="main-content" id="avatar-page">
-      <div className="container max-w-2xl animate-fade-in" style={{ marginTop: '24px' }}>
-        
-        {/* Header */}
-        <div className="dashboard-header animate-fade-in" style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h1 className="dashboard-title" style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff 30%, rgba(255,255,255,0.7) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-            Identity Studio
-          </h1>
-          <p className="dashboard-subtitle" style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', margin: '8px 0 0 0' }}>
-            Build your custom stylist profile and visual identity
-          </p>
-        </div>
-
-        {/* Stunning Premium Coming Soon Card */}
-        <div className="glass-card animate-slide-up" style={{
-          padding: '48px 32px',
-          borderRadius: '24px',
-          border: '1px solid rgba(139, 92, 246, 0.25)',
-          background: 'linear-gradient(135deg, rgba(20, 24, 38, 0.7) 0%, rgba(10, 12, 20, 0.85) 100%)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.4), 0 0 40px rgba(139, 92, 246, 0.1)',
-          backdropFilter: 'blur(20px)',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          
-          {/* Top Decorative Lights */}
-          <div style={{
-            position: 'absolute',
-            top: '-50px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '200px',
-            height: '100px',
-            background: 'radial-gradient(ellipse, rgba(139, 92, 246, 0.2) 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
-
-          {/* Animated Glowing Orb / Symbol */}
-          <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: '32px' }}>
-            <div className="avatar-upgrade-glow-ring" />
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)',
-              border: '1px solid rgba(139, 92, 246, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 30px rgba(139, 92, 246, 0.25)',
-              zIndex: 2
-            }}>
-              <svg viewBox="0 0 24 24" className="icon icon-lg animate-pulse" style={{ color: 'var(--accent-violet-light)', width: '32px', height: '32px' }}>
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-              </svg>
-            </div>
-          </div>
-
-          {/* Main Info */}
-          <h3 className="font-heading" style={{ color: 'var(--accent-violet-light)', fontSize: '1.75rem', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.01em' }}>
-            Future Upgrades Coming Soon
-          </h3>
-          
-          <div style={{
-            display: 'inline-block',
-            padding: '4px 12px',
-            borderRadius: '999px',
-            background: 'rgba(139, 92, 246, 0.12)',
-            border: '1px solid rgba(139, 92, 246, 0.25)',
-            color: 'var(--accent-violet-light)',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            marginBottom: '24px'
-          }}>
-            🚀 Virtual Try-On Room
-          </div>
-
-          <p style={{
-            fontSize: '0.95rem',
-            lineHeight: '1.6',
-            color: 'rgba(255, 255, 255, 0.8)',
-            maxWidth: '480px',
-            margin: '0 auto 36px',
-            fontWeight: 400
-          }}>
-            We are currently hard at work designing the next generation of avatar try-on technology. Your personalized 3D visual identity studio and interactive fitting room will arrive in a future system upgrade!
-          </p>
-
-          {/* Bulleted Planned Upgrades in a elegant grid */}
-          <div style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            maxWidth: '480px',
-            margin: '0 auto 36px',
-            textAlign: 'left',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px 24px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Real-time 3D Pose Fitting
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> AI Fabric Texture Mapping
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Augmented Reality Try-On
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--accent-violet-light)' }}>✔</span> Multi-garment Layering
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="btn btn-primary"
-              style={{ minWidth: '180px', padding: '12px 28px', fontSize: '0.9rem', fontWeight: 600 }}
-            >
-              Go back to Wardrobe
-            </button>
-            <button
-              onClick={handleInterestClick}
-              className={`btn ${interested ? 'btn-primary animate-pulse-glow' : 'btn-secondary'}`}
-              style={{ 
-                minWidth: '180px', 
-                padding: '12px 28px', 
-                fontSize: '0.9rem', 
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                background: interested ? 'linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-pink) 100%)' : undefined,
-                borderColor: interested ? 'rgba(139, 92, 246, 0.4)' : undefined,
-                color: interested ? '#fff' : undefined,
-                transition: 'all 0.3s ease'
-              }}
-              disabled={interested}
-            >
-              <span>{interested ? 'Voted' : 'Interested'}</span>
-              <svg viewBox="0 0 24 24" fill={interested ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-              </svg>
-            </button>
-          </div>
-
-        </div>
-
-      </div>
-    </div>
+  const filteredWardrobe = wardrobeItems.filter(item =>
+    item.category?.toLowerCase() === categoryMap[garmentType]
   );
 
+  /* Handlers */
+  const handleGarmentUpload = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => { setUploadedFile(file); setUploadedPreview(reader.result); setResultUrl(null); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCustomModelUpload = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => { setCustomModelFile(file); setCustomModelPreview(reader.result); };
+    reader.readAsDataURL(file);
+  };
+
+  const startTimer = () => {
+    setElapsedSecs(0);
+    timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
+  };
+  const stopTimer = () => { clearInterval(timerRef.current); };
+
+  const handleTryOn = async () => {
+    if (!activeGarmentUrl) {
+      error(source === 'upload' ? 'Please upload a garment image.' : 'Please select an item from your wardrobe.');
+      return;
+    }
+    if (modelType === 'custom' && !customModelFile) {
+      error('Please upload your photo first.');
+      return;
+    }
+
+    setIsProcessing(true);
+    setResultUrl(null);
+    setProcessingMsg('Segmenting garment boundaries…');
+    startTimer();
+
+    setTimeout(() => {
+      setProcessingMsg('Calculating body coordinates…');
+    }, 400);
+
+    setTimeout(() => {
+      setProcessingMsg('Aligning fit blueprint…');
+    }, 800);
+
+    setTimeout(() => {
+      stopTimer();
+      setIsProcessing(false);
+      setProcessingMsg('');
+      setResultUrl('blueprint');
+      success('📐 Fit Blueprint Complete!');
+    }, 1200);
+  };
+
+  const handleReset = () => { setResultUrl(null); };
+
+  const handleDownload = () => {
+    if (!resultUrl) return;
+    const a = document.createElement('a');
+    a.href = resultUrl;
+    a.download = `zyntra_tryon_${garmentType}_${Date.now()}.png`;
+    a.click();
+  };
+
+  /* ─── Render ─── */
   return (
     <div className="main-content" id="avatar-page">
       <div className="container">
-        <div className="dashboard-header animate-fade-in">
+
+        <div className="dashboard-header animate-fade-in" style={{ marginBottom: '28px' }}>
           <div>
-            <h1 className="dashboard-title">Identity Studio</h1>
-            <p className="dashboard-subtitle">Build your custom stylist profile and visual identity</p>
-          </div>
-          <div className="header-action-buttons" style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-primary animate-pulse-glow" onClick={() => setShowPermissionModal(true)}>
-              📸 Scan Face
-            </button>
-            <button className="btn btn-secondary" onClick={handleRandomize}>
-              🎲 Randomize
-            </button>
+            <h1 className="dashboard-title">AI Dressing Room</h1>
+            <p className="dashboard-subtitle">
+              Upload a garment — the AI will dress the model in it and show you a photorealistic result.
+            </p>
           </div>
         </div>
 
-        <div className="avatar-studio-layout">
-          {/* Left Column: Interactive 3D Canvas Showcase */}
-          <div className="avatar-showcase-section animate-slide-up">
-            <div 
-              className="avatar-canvas-box glass-card"
-              onMouseDown={handleDragStart}
-              onMouseMove={handleDragMove}
-              onMouseUp={handleDragEnd}
-              onMouseLeave={handleDragEnd}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onWheel={handleWheel}
-              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-            >
-              <div
-                className="studio-avatar-wrapper"
-                style={{
-                  transform: `rotateY(${Math.sin(((rotation + 360) % 360 * Math.PI) / 180) * 35}deg) rotateX(1.5deg)`,
-                  transition: isDragging ? 'none' : 'transform 0.3s ease',
-                  transformStyle: 'preserve-3d'
-                }}
-              >
-                <svg viewBox="0 0 200 320" className="studio-avatar-svg">
-                  <defs>
-                    {/* Rich linear skin gradient for torso and neck */}
-                    <linearGradient id="studioSkinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={SKIN_TONES.find(s => s.id === settings.skin)?.color ? SKIN_TONES.find(s => s.id === settings.skin).color : '#eca786'} />
-                      <stop offset="60%" stopColor={activeSkinColor} />
-                      <stop offset="100%" stopColor={activeSkinColor} />
-                    </linearGradient>
+        <div className="dr-layout">
 
-                    {/* 3D clay head radial gradient */}
-                    <radialGradient id="clayHeadGrad" cx="35%" cy="30%" r="60%" fx="30%" fy="25%">
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
-                      <stop offset="20%" stopColor={activeSkinColor} />
-                      <stop offset="100%" stopColor={activeSkinColor} filter="brightness(0.8)" />
-                    </radialGradient>
+          {/* ════ LEFT — Result Canvas ════ */}
+          <div className="dr-canvas-col">
 
-                    {/* 3D clay bulbous nose radial gradient */}
-                    <radialGradient id="clayNoseGrad" cx="30%" cy="30%" r="70%" fx="25%" fy="20%">
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
-                      <stop offset="35%" stopColor={activeSkinColor} />
-                      <stop offset="100%" stopColor={activeSkinColor} filter="brightness(0.72)" />
-                    </radialGradient>
+            {isProcessing ? (
+              /* ── Processing state ── */
+              <div className="dr-result-card" style={{ minHeight: 520, justifyContent: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div className="dr-ai-loader">
+                  <div className="dr-ai-ring dr-ai-ring-1" />
+                  <div className="dr-ai-ring dr-ai-ring-2" />
+                  <div className="dr-ai-ring dr-ai-ring-3" />
+                  <span className="dr-ai-icon">✦</span>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p className="dr-loader-title">{processingMsg}</p>
+                  <p className="dr-loader-step">{elapsedSecs}s elapsed</p>
+                </div>
+                {/* Show garment thumbnail while waiting */}
+                {activeGarmentUrl && (
+                  <div style={{ opacity: 0.5, borderRadius: 12, overflow: 'hidden', width: 90, height: 90 }}>
+                    <img src={activeGarmentUrl} alt="garment" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                )}
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280 }}>
+                  Analyzing garment layout coordinates and drawing connections to body fit zones...
+                </p>
+              </div>
 
-                    {/* Torso shadow gradient for chiseled look */}
-                    <linearGradient id="studioSkinShadowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(0,0,0,0.15)" />
-                      <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Shadow floor */}
-                  <ellipse cx="100" cy="305" rx="55" ry="11" fill="rgba(0,0,0,0.3)" />
-
-                  {settings.gender === 'female' ? (
-                    <>
-                      {/* ========================================================
-                         3D CLAYMATION FEMALE MODEL
-                         ======================================================== */}
-                      
-                      {/* Slender Curved Neck */}
-                      <path d="M 94,62 C 94,62 93,85 93,85 L 107,85 C 107,85 106,62 106,62 Z" fill="url(#studioSkinGrad)" />
-                      
-                      {/* Slender Torso curves */}
-                      <path d="M 76,85 
-                               C 65,85 62,97 62,109 
-                               C 62,125 70,141 73,156 
-                               C 76,171 76,195 76,195 
-                               L 124,195 
-                               C 124,195 124,171 127,156 
-                               C 130,141 138,125 138,109 
-                               C 138,97 135,85 124,85 
-                               Z" 
-                            fill="url(#studioSkinGrad)" />
-                      
-                      {/* Slender legs */}
-                      <rect x="76" y="195" width="16" height="85" rx="8" fill="url(#studioSkinGrad)" />
-                      <rect x="108" y="195" width="16" height="85" rx="8" fill="url(#studioSkinGrad)" />
-
-                      {/* Beautiful Blue Polo Shirt with Yellow details */}
-                      <path d="M 76,85 
-                               C 65,85 62,97 62,109 
-                               C 62,125 70,141 73,156 
-                               C 76,171 76,195 76,195 
-                               L 124,195 
-                               C 124,195 124,171 127,156 
-                               C 130,141 138,125 138,109 
-                               C 138,97 135,85 124,85 
-                               Z" 
-                            fill="#0ea5e9" />
-                      
-                      {/* Yellow folded collar */}
-                      <path d="M 88,85 L 75,88 L 93,100 L 100,90 Z" fill="#facc15" stroke="#d97706" strokeWidth="0.5" />
-                      <path d="M 112,85 L 125,88 L 107,100 L 100,90 Z" fill="#facc15" stroke="#d97706" strokeWidth="0.5" />
-                      
-                      {/* Yellow placket & blue buttons */}
-                      <rect x="97" y="90" width="6" height="20" fill="#facc15" rx="1" />
-                      <circle cx="100" cy="95" r="1" fill="#0ea5e9" />
-                      <circle cx="100" cy="105" r="1" fill="#0ea5e9" />
-                      
-                      {/* Yellow sleeve cuffs on female arms */}
-                      <path d="M 62,114 Q 66,115 70,114 L 70,117 Q 66,118 62,117 Z" fill="#facc15" />
-                      <path d="M 138,114 Q 134,115 130,114 L 130,117 Q 134,118 138,117 Z" fill="#facc15" />
-
-                      {/* Rounded side ears */}
-                      <circle cx="74" cy="46" r="5" fill={activeSkinColor} stroke={SKIN_TONES.find(s => s.id === settings.skin)?.color ? SKIN_TONES.find(s => s.id === settings.skin).color : '#eca786'} strokeWidth="0.5" />
-                      <circle cx="74" cy="46" r="2.5" fill="rgba(0,0,0,0.12)" />
-                      <circle cx="126" cy="46" r="5" fill={activeSkinColor} stroke={SKIN_TONES.find(s => s.id === settings.skin)?.color ? SKIN_TONES.find(s => s.id === settings.skin).color : '#eca786'} strokeWidth="0.5" />
-                      <circle cx="126" cy="46" r="2.5" fill="rgba(0,0,0,0.12)" />
-
-                      {/* Head */}
-                      <circle cx="100" cy="45" r="24" fill="url(#clayHeadGrad)" />
-
-                      {((rotation + 360) % 360 < 90 || (rotation + 360) % 360 >= 270) ? (
-                        <>
-                          {/* Closed Crescent Smiling Eyes */}
-                          <path d="M 83,41 Q 90,34 97,41" fill="none" stroke="#1c1c24" strokeWidth="3" strokeLinecap="round" />
-                          <path d="M 103,41 Q 110,34 117,41" fill="none" stroke="#1c1c24" strokeWidth="3" strokeLinecap="round" />
-
-                          {/* Bulbous Glossy Nose */}
-                          <ellipse cx="100" cy="46" rx="7" ry="6" fill="url(#clayNoseGrad)" />
-
-                          {/* Eyebrows */}
-                          <path d="M 80,33 Q 88,29 95,33.5" stroke="#121212" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                          <path d="M 120,33 Q 112,29 105,33.5" stroke="#121212" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-
-                          {/* Smiling Mouth */}
-                          {expression === 'smile' && (
-                            <path d="M 94,56 Q 100,61 106,56" stroke="#4c0519" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-                          )}
-                          {expression === 'cool' && (
-                            <>
-                              {/* Glossy Clay Sunglasses */}
-                              <path d="M 78,38 L 122,38 C 122,38 123,47 119,49 C 114,51 104,50 102,44 C 100,50 90,50 86,49 C 82,47 78,38 78,38 Z" fill="#1c1c24" rx="2" />
-                              <path d="M 80,40 L 94,42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" />
-                              <path d="M 106,40 L 120,42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" />
-                              {/* Smiling lips underneath */}
-                              <path d="M 95,54 Q 100,58 105,54" stroke="#4c0519" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                            </>
-                          )}
-                          {expression === 'neutral' && (
-                            <line x1="94" y1="56" x2="106" y2="56" stroke="#4c0519" strokeWidth="2" strokeLinecap="round" />
-                          )}
-                        </>
-                      ) : null}
-                    </>
+            ) : resultUrl === 'blueprint' || activeGarmentUrl ? (
+              /* ── Interactive Fit Blueprint View ── */
+              <div className="dr-result-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="dr-result-header" style={{ padding: '16px 20px' }}>
+                  {resultUrl === 'blueprint' ? (
+                    <span className="dr-result-badge">📐 Fit Blueprint Complete</span>
                   ) : (
-                    <>
-                      {/* ========================================================
-                         3D CLAYMATION MASCULINE MODEL
-                         ======================================================== */}
+                    <span className="dr-result-badge" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>📐 Interactive Fit Blueprint</span>
+                  )}
+                  {resultUrl === 'blueprint' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={handleReset}><IconRefresh /> Reset</button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="dr-schematic-container" style={{ position: 'relative', width: '100%', height: 400, background: 'rgba(10, 10, 15, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {/* The model image centered wrap */}
+                  <div className="dr-schematic-avatar-wrap" style={{ position: 'relative', width: '270px', height: '360px', zIndex: 1, left: 'auto' }}>
+                    <img
+                      src={modelUrl}
+                      alt="Model"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    {/* Precise white neon contour highlight */}
+                    {activeConfig && (
+                      <svg
+                        viewBox="0 0 100 100"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          pointerEvents: 'none',
+                          zIndex: 2,
+                        }}
+                      >
+                        <path
+                          d={getGarmentPath(modelType === 'custom' ? 'custom' : gender, garmentType, activeConfig)}
+                          className="neon-running-path"
+                        />
+                      </svg>
+                    )}
+
+                    {/* SVG Line */}
+                    {activeConfig && (() => {
+                      const coords = getPixelCoordinates(activeConfig);
+                      if (!coords) return null;
                       
-                      {/* Thick Athletic Neck */}
-                      <path d="M 92,62 C 92,62 92,85 92,85 L 108,85 C 108,85 108,62 108,62 Z" fill="url(#studioSkinGrad)" />
-                      
-                      {/* Broad shoulders curved athletic torso */}
-                      <path d="M 76,82 
-                               C 62,82 56,94 56,106 
-                               C 56,122 64,138 68,156 
-                               C 72,174 74,195 74,195 
-                               L 126,195 
-                               C 126,195 128,174 132,156 
-                               C 136,138 144,122 144,106 
-                               C 144,94 138,82 124,82 
-                               Z" 
-                            fill="url(#studioSkinGrad)" />
-                      
-                      {/* Legs */}
-                      <rect x="74" y="195" width="20" height="85" rx="8" fill="url(#studioSkinGrad)" />
-                      <rect x="106" y="195" width="20" height="85" rx="8" fill="url(#studioSkinGrad)" />
+                      const midX = coords.isLeft 
+                        ? coords.startX - (coords.startX - coords.endX) * 0.4 
+                        : coords.startX + (coords.endX - coords.startX) * 0.4;
+                      const pathData = `M ${coords.startX} ${coords.startY} L ${midX} ${coords.startY} L ${midX} ${coords.endY} L ${coords.endX} ${coords.endY}`;
 
-                      {/* Beautiful Blue Polo Shirt with Yellow details */}
-                      <path d="M 76,82 
-                               C 62,82 56,94 56,106 
-                               C 56,122 64,138 68,156 
-                               C 72,174 74,195 74,195 
-                               L 126,195 
-                               C 126,195 128,174 132,156 
-                               C 136,138 144,122 144,106 
-                               C 144,94 138,82 124,82 
-                               Z" 
-                            fill="#0ea5e9" />
-                      
-                      {/* Yellow folded collar */}
-                      <path d="M 88,82 L 72,85 L 92,99 L 100,89 Z" fill="#facc15" stroke="#d97706" strokeWidth="0.5" />
-                      <path d="M 112,82 L 128,85 L 108,99 L 100,89 Z" fill="#facc15" stroke="#d97706" strokeWidth="0.5" />
-                      
-                      {/* Yellow placket & blue buttons */}
-                      <rect x="96" y="89" width="8" height="25" fill="#facc15" rx="1.5" />
-                      <circle cx="100" cy="95" r="1.5" fill="#0ea5e9" />
-                      <circle cx="100" cy="107" r="1.5" fill="#0ea5e9" />
+                      return (
+                        <svg className="schematic-svg-layer" viewBox="0 0 480 360" style={{ position: 'absolute', left: '-105px', width: '480px', height: '360px', pointerEvents: 'none', zIndex: 3 }}>
+                          <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ffffff" />
+                            </marker>
+                          </defs>
+                          {/* High contrast dark outline shadow for white backgrounds */}
+                          <path
+                            d={pathData}
+                            style={{ fill: 'none', stroke: 'rgba(10, 10, 15, 0.85)', strokeWidth: 2.2, strokeLinecap: 'round' }}
+                          />
+                          {/* Glowing violet drop shadow */}
+                          <path
+                            d={pathData}
+                            style={{ fill: 'none', stroke: 'var(--accent-violet)', strokeWidth: 1.5, strokeLinecap: 'round', opacity: 0.6, filter: 'blur(1.5px)' }}
+                          />
+                          {/* White neon core line */}
+                          <path
+                            d={pathData}
+                            className="schematic-line active"
+                            markerEnd="url(#arrow)"
+                            style={{ fill: 'none', stroke: '#ffffff', strokeWidth: 0.8, strokeLinecap: 'round' }}
+                          />
+                          {/* Dot shadow */}
+                          <circle
+                            cx={coords.startX}
+                            cy={coords.startY}
+                            r="4.5"
+                            style={{ fill: 'rgba(10, 10, 15, 0.85)' }}
+                          />
+                          {/* Dot core */}
+                          <circle
+                            cx={coords.startX}
+                            cy={coords.startY}
+                            r="2"
+                            className="schematic-dot active"
+                            style={{ fill: '#ffffff', filter: 'drop-shadow(0 0 2px #ffffff)' }}
+                          />
+                        </svg>
+                      );
+                    })()}
 
-                      {/* Yellow sleeve cuffs on male arms */}
-                      <path d="M 56,114 Q 60,115 64,114 L 64,117 Q 60,118 56,117 Z" fill="#facc15" />
-                      <path d="M 144,114 Q 140,115 136,114 L 136,117 Q 140,118 144,117 Z" fill="#facc15" />
+                    {/* Garment card */}
+                    {activeConfig && (() => {
+                      const coords = getPixelCoordinates(activeConfig);
+                      if (!coords) return null;
+                      return (
+                        <div
+                          className="schematic-garment-card active single-fit"
+                          style={{
+                            position: 'absolute',
+                            top: `${coords.endY}px`,
+                            transform: 'translateY(-50%)',
+                            width: '100px',
+                            zIndex: 10,
+                            [coords.isLeft ? 'left' : 'right']: '-115px'
+                          }}
+                        >
+                          <div className="schematic-garment-img-box" style={{ height: '70px', padding: '4px' }}>
+                            <img src={activeGarmentUrl} className="schematic-garment-img" style={{ maxHeight: '100%' }} alt={activeGarmentName || 'Garment'} />
+                          </div>
+                          <div className="schematic-garment-meta">
+                            <span className="schematic-garment-slot">{activeConfig.label.split(' ')[0]}</span>
+                            <span className="schematic-garment-name" title={activeGarmentName}>{activeGarmentName || 'Selected Garment'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
 
-                      {/* Chest Pocket */}
-                      <rect x="110" y="112" width="15" height="15" fill="#0c92d0" rx="1" />
-                      <rect x="110" y="112" width="15" height="3" fill="#facc15" rx="0.5" />
-
-                      {/* Rounded side ears */}
-                      <circle cx="74" cy="46" r="5" fill={activeSkinColor} stroke={SKIN_TONES.find(s => s.id === settings.skin)?.color ? SKIN_TONES.find(s => s.id === settings.skin).color : '#eca786'} strokeWidth="0.5" />
-                      <circle cx="74" cy="46" r="2.5" fill="rgba(0,0,0,0.12)" />
-                      <circle cx="126" cy="46" r="5" fill={activeSkinColor} stroke={SKIN_TONES.find(s => s.id === settings.skin)?.color ? SKIN_TONES.find(s => s.id === settings.skin).color : '#eca786'} strokeWidth="0.5" />
-                      <circle cx="126" cy="46" r="2.5" fill="rgba(0,0,0,0.12)" />
-
-                      {/* Head */}
-                      <circle cx="100" cy="45" r="24" fill="url(#clayHeadGrad)" />
-
-                      {((rotation + 360) % 360 < 90 || (rotation + 360) % 360 >= 270) ? (
-                        <>
-                          {/* Closed Crescent Smiling Eyes */}
-                          <path d="M 83,41 Q 90,34 97,41" fill="none" stroke="#1c1c24" strokeWidth="3" strokeLinecap="round" />
-                          <path d="M 103,41 Q 110,34 117,41" fill="none" stroke="#1c1c24" strokeWidth="3" strokeLinecap="round" />
-
-                          {/* Bulbous Glossy Nose */}
-                          <ellipse cx="100" cy="46" rx="7.5" ry="6.5" fill="url(#clayNoseGrad)" />
-
-                          {/* Eyebrows */}
-                          <path d="M 80,32 Q 88,28 96,32.5" stroke="#121212" strokeWidth="2" strokeLinecap="round" fill="none" />
-                          <path d="M 120,32 Q 112,28 104,32.5" stroke="#121212" strokeWidth="2" strokeLinecap="round" fill="none" />
-
-                          {/* Mustache & Beard (Chiseled clay ridges!) */}
-                          {settings.hasBeard && (
-                            <>
-                              {/* Chiseled Ridged Beard */}
-                              <path d="M 74,42 
-                                       C 73,53 76,64 83,71 
-                                       C 88,76 92,79 93,82 
-                                       L 96,78 
-                                       L 100,83 
-                                       L 104,78 
-                                       L 107,82 
-                                       C 108,79 112,76 117,71 
-                                       C 124,64 127,53 126,42 
-                                       C 127,50 124,66 116,74 
-                                       L 112,71 
-                                       L 108,75 
-                                       L 100,70 
-                                       L 92,75 
-                                       L 88,71 
-                                       C 80,66 73,50 74,42 Z" 
-                                    fill="#1a1a24" />
-
-                              {/* Beard grooves */}
-                              <path d="M 86,60 L 88,70" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M 94,62 L 95,73" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M 100,63 L 100,75" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M 106,62 L 105,73" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M 114,60 L 112,70" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
-
-                              {/* Mustache */}
-                              <path d="M 85,50 C 90,46 97,46 100,48 C 103,46 110,46 115,50 C 120,55 116,58 100,56 C 84,58 80,55 85,50 Z" fill="#1a1a24" />
-                            </>
-                          )}
-
-                          {/* Smiling mouth / lips */}
-                          {expression === 'smile' && (
-                            <path d="M 94,56 Q 100,61 106,56" stroke={settings.hasBeard ? "#fff" : "#222"} strokeWidth="1.8" fill="none" strokeLinecap="round" />
-                          )}
-                          {expression === 'cool' && (
-                            <>
-                              {/* Glossy Clay Sunglasses */}
-                              <path d="M 78,38 L 122,38 C 122,38 123,47 119,49 C 114,51 104,50 102,44 C 100,50 90,50 86,49 C 82,47 78,38 78,38 Z" fill="#1c1c24" rx="2" />
-                              <path d="M 80,40 L 94,42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" />
-                              <path d="M 106,40 L 120,42" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" />
-                              {/* Smiling lips underneath */}
-                              <path d="M 95,54 Q 100,58 105,54" stroke={settings.hasBeard ? "#fff" : "#222"} strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                            </>
-                          )}
-                          {expression === 'neutral' && (
-                            <line x1="94" y1="56" x2="106" y2="56" stroke={settings.hasBeard ? "#fff" : "#222"} strokeWidth="1.5" strokeLinecap="round" />
-                          )}
-                        </>
-                      ) : null}
-                    </>
-                  )}
-
-                  {/* Hairstyles */}
-                  {settings.hair === 'messy' && (
-                    <path d="M 70,36 C 68,10 132,10 130,36 C 137,30 120,2 100,2 C 80,2 63,30 70,36 Z M 65,30 C 65,30 74,18 84,20 C 74,20 67,26 65,30 Z" fill={activeHairColor} />
-                  )}
-                  {settings.hair === 'waves' && (
-                    <path d="M 70,38 C 65,25 72,8 100,8 C 128,8 135,25 130,38 C 142,50 140,85 138,98 C 132,80 126,50 126,50 C 122,44 100,38 100,38 C 100,38 78,44 74,50 C 74,50 68,80 62,98 C 60,85 58,50 70,38 Z" fill={activeHairColor} />
-                  )}
-                  {settings.hair === 'crop' && (
-                    <path d="M 72,36 C 72,16 128,16 128,36 C 131,28 124,10 100,10 C 76,10 69,28 72,36 Z" fill={activeHairColor} />
-                  )}
-                  {settings.hair === 'curly' && (
-                    <path d="M 72,36 C 58,20 70,2 100,2 C 130,2 142,20 128,36 C 136,29 135,16 124,8 C 113,1 87,1 76,8 C 65,16 64,29 72,36 Z" fill={activeHairColor} />
-                  )}
-                  {settings.hair === 'sidepart' && (
-                    <path d="M 70,38 C 70,16 120,10 130,32 C 128,20 115,14 100,16 C 84,18 73,28 70,38 Z" fill={activeHairColor} />
-                  )}
-                </svg>
+                {/* Info strip below the schematic */}
+                <div className="dr-info-strip" style={{ margin: '12px 20px 20px' }}>
+                  <div className="dr-info-row">
+                    <span className="dr-info-label">Fit Area:</span>
+                    <span className="dr-info-value" style={{ color: 'var(--accent-violet-light)' }}>{activeConfig?.label}</span>
+                  </div>
+                  <div className="dr-info-row">
+                    <span className="dr-info-label">Status:</span>
+                    <span className="dr-info-value" style={{ color: resultUrl === 'blueprint' ? '#10b981' : '#f59e0b' }}>
+                      {resultUrl === 'blueprint' ? '✓ Calibration Complete' : '⚙️ Calibration Pending'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Drag badge overlay */}
-              <div className="drag-rotate-badge animate-pulse-glow">
-                🔄 Drag or Swipe to Spin 360°
-              </div>
-            </div>
-
-            {/* Interactive rotation panel */}
-            <div className="canvas-rotation-panel glass-card">
-              <div className="rotation-label-row">
-                <span className="font-heading">Interactive Viewpoint</span>
-                <span>{rotation}° ({(rotation < 90 || rotation >= 270) ? 'Front' : 'Back'} View)</span>
-              </div>
-              <div className="rotation-controls" style={{ marginTop: '8px' }}>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${autoRotate ? 'btn-primary animate-pulse-glow' : 'btn-secondary'}`}
-                  onClick={() => setAutoRotate(!autoRotate)}
-                  style={{ flex: 1 }}
-                >
-                  🔄 {autoRotate ? 'Spinning Active' : 'Auto 360 Spin'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  onClick={() => setRotation(0)}
-                >
-                  <IconRefresh /> Reset Front
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Customizer Selector Sidebar */}
-          <div className="avatar-editor-section glass-card animate-slide-up delay-1">
-            <h3 className="editor-section-header font-heading">
-              <IconSparkles /> Customizer Panel
-            </h3>
-
-            {/* Gender / Body Frame Type */}
-            <div className="editor-group">
-              <label className="editor-group-title">Body Frame</label>
-              <div className="gender-btn-group">
-                <button
-                  type="button"
-                  className={`gender-btn ${settings.gender === 'male' ? 'active' : ''}`}
-                  onClick={() => updateSetting('gender', 'male')}
-                >
-                  Boy ♂️
-                </button>
-                <button
-                  type="button"
-                  className={`gender-btn ${settings.gender === 'female' ? 'active' : ''}`}
-                  onClick={() => updateSetting('gender', 'female')}
-                >
-                  Girl ♀️
-                </button>
-              </div>
-            </div>
-
-            {/* Skin Colors Swatch */}
-            <div className="editor-group">
-              <label className="editor-group-title">Skin Tone</label>
-              <div className="color-swatch-list">
-                {SKIN_TONES.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`swatch-btn ${settings.skin === t.id ? 'active' : ''}`}
-                    style={{ backgroundColor: t.color }}
-                    onClick={() => updateSetting('skin', t.id)}
-                    title={t.label}
-                  >
-                    <div className="swatch-indicator" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hair Cut style Grid */}
-            <div className="editor-group">
-              <label className="editor-group-title">Hairstyle</label>
-              <div className="hairstyles-grid">
-                {HAIR_STYLES.map((style) => (
-                  <button
-                    key={style.id}
-                    type="button"
-                    className={`style-btn ${settings.hair === style.id ? 'active' : ''}`}
-                    onClick={() => updateSetting('hair', style.id)}
-                  >
-                    {style.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hair Colors Swatch */}
-            <div className="editor-group">
-              <label className="editor-group-title">Hair Color</label>
-              <div className="color-swatch-list">
-                {HAIR_COLORS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`swatch-btn ${settings.hairColor === c.id ? 'active' : ''}`}
-                    style={{ backgroundColor: c.color }}
-                    onClick={() => updateSetting('hairColor', c.id)}
-                    title={c.label}
-                  >
-                    <div className="swatch-indicator" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Expressions */}
-            <div className="editor-group">
-              <label className="editor-group-title">Expression</label>
-              <div className="hairstyles-grid">
-                {EXPRESSIONS.map((expr) => (
-                  <button
-                    key={expr.id}
-                    type="button"
-                    className={`style-btn ${settings.expression === expr.id ? 'active' : ''}`}
-                    onClick={() => updateSetting('expression', expr.id)}
-                  >
-                    {expr.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Beard option for Male Frame */}
-            {settings.gender === 'male' && (
-              <div className="editor-group animate-fade-in">
-                <label className="editor-group-title">Facial Hair (3D Clay Beard)</label>
-                <div className="gender-btn-group">
-                  <button
-                    type="button"
-                    className={`gender-btn ${settings.hasBeard ? 'active' : ''}`}
-                    onClick={() => updateSetting('hasBeard', true)}
-                  >
-                    Thick Beard 🧔
-                  </button>
-                  <button
-                    type="button"
-                    className={`gender-btn ${!settings.hasBeard ? 'active' : ''}`}
-                    onClick={() => updateSetting('hasBeard', false)}
-                  >
-                    Clean Shaven 🪒
-                  </button>
+            ) : (
+              /* ── Idle state (no garment selected) ── */
+              <div className="dr-result-card dr-idle-card">
+                <div className="dr-idle-model-box">
+                  <img src={modelUrl} alt="Model" className="dr-idle-model-img" />
+                </div>
+                <div className="dr-idle-overlay">
+                  <div className="dr-idle-wand"><IconWand /></div>
+                  <p className="dr-idle-ready-text">Select a garment on the right, then click <strong>Try It On</strong></p>
                 </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* 📸 Webcam Camera Face Scanner Overlay Modal */}
-      {showPermissionModal && (
-        <div className="scanner-modal-backdrop animate-fade-in">
-          <div className="scanner-card glass-card animate-scale-in">
-            <h3 className="scanner-title font-heading">📸 Webcam Selfie Permission</h3>
-            <p className="scanner-description">
-              Zyntra needs access to your camera to take a selfie, analyze your skin/hair tones, and automatically generate your personalized 3D Claymation Avatar!
-            </p>
-            <div className="scanner-warning-alert">
-              🔒 <strong>Privacy Assurance:</strong> Your photo is processed locally inside your web browser. No visual data is sent to external servers or stored database-side.
-            </div>
-            <div className="scanner-actions">
-              <button 
-                className="btn btn-primary" 
-                onClick={() => {
-                  setShowPermissionModal(false);
-                  startCamera();
-                }}
-              >
-                Allow & Start webcam
-              </button>
-              <button className="btn btn-secondary" onClick={() => setShowPermissionModal(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          {/* ════ RIGHT — Controls ════ */}
+          <div className="avatar-editor-section glass-card animate-slide-up delay-1">
+            <h3 className="editor-section-header font-heading">
+              <IconSparkles /> Fitting Controls
+            </h3>
 
-      {cameraActive && (
-        <div className="scanner-modal-backdrop animate-fade-in">
-          <div className="scanner-card video-scanner-card glass-card animate-scale-in">
-            <div className="scanner-header">
-              <h3 className="scanner-title font-heading">📸 3D Claymation Face Scanner</h3>
-              <button className="scanner-close-btn" onClick={stopCamera}>&times;</button>
-            </div>
-            
-            <div className="video-viewport-wrapper">
-              <video ref={videoRef} autoPlay playsInline className="webcam-feed" />
-              
-              {/* Glowing circular viewfinder guide */}
-              <div className="scanner-viewfinder">
-                <div className="viewfinder-corner top-left"></div>
-                <div className="viewfinder-corner top-right"></div>
-                <div className="viewfinder-corner bottom-left"></div>
-                <div className="viewfinder-corner bottom-right"></div>
+            {/* Step 1 – Model */}
+            <div className="editor-group">
+              <label className="editor-group-title">1. Model</label>
+              <div className="gender-btn-group" style={{ gridTemplateColumns: '1fr 1fr 1.1fr' }}>
+                {['male','female'].map(g => (
+                  <button key={g} type="button"
+                    className={`gender-btn ${modelType === 'default' && gender === g ? 'active' : ''}`}
+                    onClick={() => { setModelType('default'); setGender(g); setResultUrl(null); }}>
+                    {g === 'male' ? 'Male ♂️' : 'Female ♀️'}
+                  </button>
+                ))}
+                <button type="button"
+                  className={`gender-btn ${modelType === 'custom' ? 'active' : ''}`}
+                  onClick={() => { setModelType('custom'); setResultUrl(null); }}>
+                  Your Photo 📸
+                </button>
               </div>
 
-              {/* Scanning neon horizontal sweeping line */}
-              {scanningFace && <div className="scanner-laser-line" />}
-
-              {scanningFace && (
-                <div className="scanner-scanning-overlay">
-                  <div className="scanner-spinner" />
-                  <div className="scanner-progress-text">ANALYZING SKIN TONE & FACIAL GEOMETRY...</div>
+              {modelType === 'custom' && (
+                <div className="animate-fade-in" style={{ marginTop: 4 }}>
+                  {customModelPreview ? (
+                    <div className="upload-preview-card">
+                      <img src={customModelPreview} className="upload-preview-thumbnail" alt="custom model" style={{ objectFit: 'cover' }} />
+                      <div className="upload-preview-info">
+                        <span className="upload-preview-filename">{customModelFile?.name}</span>
+                        <span className="upload-preview-size">{(customModelFile?.size/1024).toFixed(1)} KB</span>
+                      </div>
+                      <button className="upload-preview-remove-btn" onClick={() => { setCustomModelFile(null); setCustomModelPreview(null); }}>×</button>
+                    </div>
+                  ) : (
+                    <label className="file-dropzone" style={{ padding: 16 }}>
+                      <span className="file-dropzone-icon">👤</span>
+                      <span className="file-dropzone-text">Upload your full-body photo</span>
+                      <span className="file-dropzone-subtext">Front-facing, standing, clear background works best</span>
+                      <input type="file" accept="image/*" onChange={handleCustomModelUpload} style={{ display: 'none' }} />
+                    </label>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="scanner-footer">
-              <p className="scanner-subtext">Center your face in the oval guide for optimal Claymation color mapping.</p>
-              <div className="scanner-actions" style={{ justifyContent: 'center' }}>
-                <button 
-                  className={`btn btn-primary capture-btn ${scanningFace ? 'disabled' : ''}`}
-                  onClick={captureSelfie}
-                  disabled={scanningFace}
-                >
-                  {scanningFace ? '⏳ Scanning Face...' : 'Capture Selfie 📸'}
-                </button>
-                <button className="btn btn-secondary" onClick={stopCamera} disabled={scanningFace}>
-                  Close Camera
-                </button>
+            {/* Step 2 – Garment type */}
+            <div className="editor-group">
+              <label className="editor-group-title">2. Garment Type</label>
+              <div className="gender-btn-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  ['tshirt', '👕 Top'],
+                  ['jeans', '👖 Bottom'],
+                  ['shoes', '👟 Shoes'],
+                  ['outerwear', '🧥 Outerwear'],
+                  ['accessory', '⌚ Accessory']
+                ].map(([v, label]) => (
+                  <button key={v} type="button"
+                    className={`gender-btn ${garmentType === v ? 'active' : ''}`}
+                    style={{ padding: '8px 4px', fontSize: '0.78rem' }}
+                    onClick={() => { setGarmentType(v); setSelectedItem(null); setResultUrl(null); }}>
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Step 3 – Source */}
+            <div className="editor-group">
+              <label className="editor-group-title">3. Garment Source</label>
+              <div className="gender-btn-group">
+                {[['upload','Upload Photo'],['wardrobe','From Wardrobe']].map(([v, label]) => (
+                  <button key={v} type="button"
+                    className={`gender-btn ${source === v ? 'active' : ''}`}
+                    style={{ fontSize: '0.8rem' }}
+                    onClick={() => { setSource(v); setResultUrl(null); if (v==='upload') setSelectedItem(null); else { setUploadedFile(null); setUploadedPreview(null); } }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Garment input */}
+            {source === 'upload' ? (
+              <div className="editor-group animate-fade-in">
+                {uploadedPreview ? (
+                  <div className="dr-garment-preview-large">
+                    <img src={uploadedPreview} alt="garment" className="dr-garment-preview-img" />
+                    <div className="dr-garment-preview-meta">
+                      <span>{uploadedFile?.name}</span>
+                      <button onClick={() => { setUploadedFile(null); setUploadedPreview(null); setResultUrl(null); }}>✕ Remove</button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="file-dropzone">
+                    <span className="file-dropzone-icon">📤</span>
+                    <span className="file-dropzone-text">Drop garment photo here</span>
+                    <span className="file-dropzone-subtext">Any product photo — AI removes the background automatically</span>
+                    <input type="file" accept="image/*" onChange={handleGarmentUpload} style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
+            ) : (
+              <div className="editor-group animate-fade-in">
+                <label className="editor-group-title" style={{ fontSize: '0.72rem', opacity: 0.75 }}>
+                  {{
+                    tshirt: 'Tops',
+                    jeans: 'Bottoms',
+                    shoes: 'Shoes',
+                    outerwear: 'Outerwear',
+                    accessory: 'Accessories'
+                  }[garmentType] || 'Items'} from your closet:
+                </label>
+                <div className="dr-wardrobe-grid-wrap">
+                  {loadingWardrobe ? (
+                    <p className="dr-wardrobe-empty">Loading…</p>
+                  ) : filteredWardrobe.length === 0 ? (
+                    <p className="dr-wardrobe-empty">No {{
+                      tshirt: 'tops',
+                      jeans: 'bottoms',
+                      shoes: 'shoes',
+                      outerwear: 'outerwear',
+                      accessory: 'accessories'
+                    }[garmentType] || 'items'} in wardrobe yet.</p>
+                  ) : (
+                    <div className="dr-wardrobe-grid">
+                      {filteredWardrobe.map(item => (
+                        <div key={item._id} onClick={() => { setSelectedItem(item); setResultUrl(null); }}
+                          className={`dr-wardrobe-chip ${selectedItem?._id === item._id ? 'active' : ''}`}
+                          title={item.name}>
+                          <img src={`http://${window.location.hostname}:5000${item.imageUrl}`} alt={item.name} />
+                          {selectedItem?._id === item._id && <div className="dr-wardrobe-chip-check"><IconCheck /></div>}
+                          <div className="dr-wardrobe-chip-name">{item.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <button
+              type="button"
+              className="btn btn-render-glow font-heading"
+              style={{ padding: '16px 20px', fontSize: '1.05rem', marginTop: 4 }}
+              onClick={handleTryOn}
+              disabled={isProcessing || !activeGarmentUrl}
+            >
+              {isProcessing ? `⏳ AI Processing… ${elapsedSecs}s` : '✨ Try It On'}
+            </button>
+
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5, opacity: 0.65, marginTop: -8 }}>
+              Powered by IDM-VTON — state-of-the-art virtual try-on AI
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

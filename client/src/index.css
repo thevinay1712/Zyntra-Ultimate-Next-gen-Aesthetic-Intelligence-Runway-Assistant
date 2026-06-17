@@ -112,6 +112,8 @@ html {
 body {
   font-family: var(--font-body);
   background-color: var(--bg-primary);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+  background-size: 44px 44px;
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
@@ -338,6 +340,17 @@ ul, ol {
   border-color: var(--accent-violet);
   box-shadow: 0 0 0 3px var(--accent-violet-soft), inset 0 2px 4px rgba(0,0,0,0.2);
   background: rgba(139, 92, 246, 0.03);
+}
+
+/* Override browser default autocomplete styles for dark mode matching */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover, 
+.input:-webkit-autofill:focus, 
+.input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0a0d14 inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .input::placeholder {

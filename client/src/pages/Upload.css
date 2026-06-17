@@ -9,7 +9,7 @@
 
 .upload-container {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 340px 1fr;
   gap: 40px;
   align-items: start;
 }
@@ -19,6 +19,8 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  max-width: 340px;
 }
 
 .upload-dropzone {
@@ -96,13 +98,32 @@
   position: relative;
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: calc(var(--radius-xl) - 2px);
+  background: #07090e;
+}
+
+.image-preview-backdrop {
+  position: absolute;
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  filter: blur(24px) brightness(0.6);
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .image-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: calc(var(--radius-xl) - 2px);
+  position: relative;
+  max-width: 60%;
+  max-height: 60%;
+  object-fit: contain;
+  z-index: 1;
+  pointer-events: auto;
+  transition: transform 0.3s ease;
 }
 
 .btn-remove-img {
@@ -210,8 +231,8 @@
 }
 
 .selection-groups {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
@@ -270,6 +291,10 @@
     grid-template-columns: 1fr;
   }
   
+  .upload-zone-wrapper {
+    max-width: 100%;
+  }
+  
   .upload-dropzone {
     max-width: 400px;
     margin: 0 auto;
@@ -278,6 +303,10 @@
 
 @media (max-width: 480px) {
   .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .selection-groups {
     grid-template-columns: 1fr;
   }
   
@@ -498,14 +527,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--text-primary);
-  font-weight: 700;
-  font-size: 0.938rem;
+  color: var(--text-secondary);
   padding: 4px 0;
   transition: color var(--transition-fast);
 }
 
-.advanced-toggle:hover {
+.advanced-toggle span {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: color var(--transition-fast);
+}
+
+.advanced-toggle:hover,
+.advanced-toggle:hover span {
   color: var(--accent-violet-light);
 }
 
@@ -822,8 +859,8 @@
    ======================================================== */
 .quote-loader-circle {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: rgba(139, 92, 246, 0.08);
   display: flex;
@@ -841,3 +878,51 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
+/* Translucent overlay that blurs out the background screen */
+.quote-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(8, 10, 16, 0.88); /* Translucent dark background overlay */
+  backdrop-filter: blur(12px);       /* Blur the background screen behind overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 1;
+  transition: opacity 0.4s ease;     /* Smooth exit opacity transition */
+}
+
+/* Overlay fade-out state */
+.quote-modal-overlay.closing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Centered quote box with less transparency (solid background) */
+.quote-modal-box {
+  width: 90%;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: #0f121d; /* Solid background color (less transparent) */
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  position: relative;
+  z-index: 10001;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* Smooth exit scale and translate transition */
+}
+
+/* Quote box slide-down and fade-out state */
+.quote-modal-box.closing {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+}
+
+

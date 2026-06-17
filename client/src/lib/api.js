@@ -46,6 +46,11 @@ export const clothingAPI = {
   update: (id, data) => api.put(`/clothing/${id}`, data),
   delete: (id) => api.delete(`/clothing/${id}`),
   getSimilar: (id) => api.get(`/clothing/${id}/similar`),
+  tryOn: (formData) =>
+    api.post('/clothing/tryon', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob',
+    }),
 };
 
 // Outfits
@@ -65,5 +70,14 @@ export const recommendAPI = {
 export const imageSearchAPI = {
   search: (q, category) => api.get('/imagesearch', { params: { q, category } }),
 };
+
+// Virtual Try-On (outfit-level)
+export const tryOnAPI = {
+  generate: (data) => api.post('/tryon/generate', data),
+  getStatus: (jobId) => api.get(`/tryon/${jobId}`),
+};
+
+// AI Service base (for avatar thumbnails, etc.)
+export const AI_BASE = `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000`;
 
 export default api;

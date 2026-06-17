@@ -31,11 +31,17 @@ export default function ClothingCard({ item, onDelete, onEdit, selectable, selec
 
       <div className="card-image-wrap">
         {!imageLoaded && <div className="card-image-skeleton skeleton" />}
+        
         <img
           src={`http://localhost:5000${item.imageUrl}`}
           alt={item.name}
           className={`card-image ${imageLoaded ? 'loaded' : ''}`}
           onLoad={() => setImageLoaded(true)}
+          style={{
+            transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+            transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease',
+            opacity: imageLoaded ? 1 : 0
+          }}
         />
         
         {/* Color dots overlay */}

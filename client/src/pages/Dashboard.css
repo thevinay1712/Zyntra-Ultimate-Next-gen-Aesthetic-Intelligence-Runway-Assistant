@@ -82,13 +82,13 @@
 /* Clothing Grid */
 .clothes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
   margin-top: 32px;
 }
 
 .clothing-skeleton {
-  height: 320px;
+  height: 270px;
 }
 
 /* Empty State */

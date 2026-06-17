@@ -63,6 +63,30 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     let fileBuffer = fs.readFileSync(req.file.path);
     const originalMime = req.file.mimetype;
+
+    // Calculate hash of the ORIGINAL uploaded image to check for duplicates
+    const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    console.log(`[UPLOAD] User ID: ${req.userId} (type: ${typeof req.userId}), File Hash: ${fileHash}`);
+
+    // 1. Check if the exact same image has already been uploaded by the user
+    const existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash });
+    console.log(`[UPLOAD] Duplicate query result:`, existingHash ? { id: existingHash._id, name: existingHash.name, hash: existingHash.imageHash } : 'None found');
+    if (existingHash) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ message: 'You have already uploaded this exact image.' });
+    }
+
+    // 2. Check if an item with the same name already exists in user's wardrobe
+    const existingName = await Clothing.findOne({ userId: req.userId, name: name });
+    if (existingName) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ message: 'An item with this name already exists in your wardrobe.' });
+    }
+
     let bgRemoved = false;
     let transparentBuffer = null;
 
@@ -127,6 +151,19 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     // If background was removed successfully, save the transparent PNG and update file details
     if (bgRemoved && transparentBuffer) {
+      // Calculate hash of the transparent/isolated PNG to check against legacy DB entries
+      const transparentHash = crypto.createHash('sha256').update(transparentBuffer).digest('hex');
+      console.log(`[UPLOAD] Isolated Hash: ${transparentHash}`);
+
+      const existingTransparent = await Clothing.findOne({ userId: req.userId, imageHash: transparentHash });
+      console.log(`[UPLOAD] Legacy/isolated duplicate query result:`, existingTransparent ? { id: existingTransparent._id, name: existingTransparent.name } : 'None found');
+      if (existingTransparent) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ message: 'You have already uploaded this exact image.' });
+      }
+
       // Generate new unique name with .png extension
       const baseName = path.basename(req.file.filename, path.extname(req.file.filename));
       const newFilename = `${baseName}-transparent.png`;
@@ -146,27 +183,6 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       req.file.path = newPath;
       req.file.filename = newFilename;
       req.file.mimetype = 'image/png';
-      
-      // Update fileBuffer to compute the correct hash of the isolated PNG
-      fileBuffer = transparentBuffer;
-    }
-
-    const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
-
-    const existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash });
-    if (existingHash) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({ message: 'You have already uploaded this exact image.' });
-    }
-
-    const existing = await Clothing.findOne({ userId: req.userId, name: name });
-    if (existing) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({ message: 'An item with this name already exists in your wardrobe.' });
     }
 
     // --- CLOSET AI: FORWARD IMAGE FOR QUALITY & FASHION UNDERSTANDING ---
