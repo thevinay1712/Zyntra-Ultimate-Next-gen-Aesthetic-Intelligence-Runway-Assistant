@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { recommendAPI, clothingAPI } from '../lib/api';
 import { useToast } from '../context/ToastContext';
+import TryOn from './TryOn';
 import './Recommend.css';
 
 /* SVG Icons */
-const IconCpu = () => <svg viewBox="0 0 24 24" className="icon"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
-const IconStar = () => <svg viewBox="0 0 24 24" className="icon icon-sm" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
-const IconRefresh = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>;
-const IconX = () => <svg viewBox="0 0 24 24" className="icon"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-const IconSettings = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+const IconCpu = () => <svg viewBox="0 0 24 24" className="icon"><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" /><line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" /><line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" /></svg>;
+const IconStar = () => <svg viewBox="0 0 24 24" className="icon icon-sm" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
+const IconRefresh = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>;
+const IconX = () => <svg viewBox="0 0 24 24" className="icon"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+const IconSettings = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
 
 const DESTINATIONS = [
   { id: 'casual', label: 'Cafe & Friends', icon: '☕', desc: 'Relaxed hangout, casual lunches, daily runs' },
@@ -131,9 +132,9 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
   const visualY = Math.sin((normRot * Math.PI) / 180) * 35;
 
   return (
-    <div 
-      className="avatar-wrapper" 
-      style={{ 
+    <div
+      className="avatar-wrapper"
+      style={{
         transform: `rotateY(${visualY}deg) rotateX(1.5deg)`,
         transition: 'transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1)',
         transformStyle: 'preserve-3d'
@@ -183,18 +184,18 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
             {/* ========================================================
                3D CLAYMATION FEMALE MODEL (Organic Silhouettes)
                ======================================================== */}
-            
+
             {/* Slender Curved Neck */}
             <path d="M 94,62 C 94,62 93,85 93,85 L 107,85 C 107,85 106,62 106,62 Z" fill="url(#avatarSkinGrad)" />
             <path d="M 94,62 L 95,85 L 100,85 Z" fill={skinPalette.shadow} opacity="0.3" />
 
             {/* Slender Torso curves */}
             <path d="M 76,85 C 65,85 62,97 62,109 C 62,125 70,141 73,156 C 76,171 76,195 76,195 L 124,195 C 124,195 124,171 127,156 C 130,141 138,125 138,109 C 138,97 135,85 124,85 Z" fill="url(#avatarSkinGrad)" />
-            
+
             {/* Female slender elegant legs */}
             <rect x="76" y="195" width="16" height="85" rx="8" fill="url(#avatarSkinGrad)" />
             <rect x="108" y="195" width="16" height="85" rx="8" fill="url(#avatarSkinGrad)" />
-            
+
             {/* Legs muscle shading lines */}
             <path d="M 84,195 L 84,260" stroke={skinPalette.shadow} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
             <path d="M 116,195 L 116,260" stroke={skinPalette.shadow} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
@@ -284,14 +285,14 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
             {/* ========================================================
                3D CLAYMATION MASCULINE MODEL (Organic Silhouettes)
                ======================================================== */}
-            
+
             {/* Thick Athletic Neck */}
             <path d="M 92,62 C 92,62 92,85 92,85 L 108,85 C 108,85 108,62 108,62 Z" fill="url(#avatarSkinGrad)" />
             <path d="M 92,62 L 93,85 L 100,85 Z" fill={skinPalette.shadow} opacity="0.35" />
 
             {/* Broad shoulders curved athletic torso */}
             <path d="M 76,82 C 62,82 56,94 56,106 C 56,122 64,138 68,156 C 72,174 74,195 74,195 L 126,195 C 126,195 128,174 132,156 C 136,138 144,122 144,106 C 144,94 138,82 124,82 Z" fill="url(#avatarSkinGrad)" />
-            
+
             {/* Chest & muscle outlines */}
             {activeView === 'front' && (
               <>
@@ -301,7 +302,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
 
                 {/* Pectoral contours */}
                 <path d="M 70,116 C 80,122 90,124 100,124 C 110,124 120,122 130,116" stroke={skinPalette.shadow} strokeWidth="1.5" fill="none" opacity="0.35" />
-                
+
                 {/* Abdominal shading */}
                 <path d="M 93,138 L 107,138 M 90,154 L 110,154 M 93,170 L 107,170" stroke={skinPalette.shadow} strokeWidth="1.2" opacity="0.3" />
                 <line x1="100" y1="124" x2="100" y2="185" stroke={skinPalette.shadow} strokeWidth="1.2" opacity="0.3" />
@@ -367,8 +368,8 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
                              L 100,70 
                              L 92,75 
                              L 88,71 
-                             C 80,66 73,50 74,42 Z" 
-                          fill="#1a1a24" />
+                             C 80,66 73,50 74,42 Z"
+                      fill="#1a1a24" />
 
                     {/* Grooves for 3D textures */}
                     <path d="M 86,60 L 88,70" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
@@ -492,7 +493,72 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
   );
 }
 
+/* ========================================================
+   DYNAMIC WEATHER ANIMATED VISUALIZER
+   ======================================================== */
+function WeatherVisualizer({ condition = '' }) {
+  const cond = condition.toLowerCase();
+
+  // Rainy / Showers / Thunderstorm
+  if (cond.includes('rain') || cond.includes('shower') || cond.includes('thunderstorm') || cond.includes('🌧️') || cond.includes('🌦️') || cond.includes('⛈️')) {
+    const isThunder = cond.includes('thunder') || cond.includes('⛈️');
+    return (
+      <div className="weather-visualizer-box rain-visualizer">
+        {isThunder && <div className="lightning-flash" />}
+        <div className="cloud-container">
+          <span className="cloud-emoji">🌧️</span>
+        </div>
+        <div className="rain-drops">
+          <div className="drop d1" />
+          <div className="drop d2" />
+          <div className="drop d3" />
+          <div className="drop d4" />
+          <div className="drop d5" />
+        </div>
+      </div>
+    );
+  }
+
+  // Snowy
+  if (cond.includes('snow') || cond.includes('❄️')) {
+    return (
+      <div className="weather-visualizer-box snow-visualizer">
+        <div className="cloud-container">
+          <span className="cloud-emoji">☁️</span>
+        </div>
+        <div className="snowflakes">
+          <div className="flake f1">❄️</div>
+          <div className="flake f2">❄️</div>
+          <div className="flake f3">❄️</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cloudy / Partly Cloudy / Foggy
+  if (cond.includes('cloud') || cond.includes('fog') || cond.includes('⛅') || cond.includes('🌫️')) {
+    return (
+      <div className="weather-visualizer-box cloud-visualizer">
+        <div className="sun-behind-clouds">☀️</div>
+        <div className="clouds-floating">
+          <span className="cloud-c1">☁️</span>
+          <span className="cloud-c2">☁️</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Sunny / Clear Sky (Default fallback)
+  return (
+    <div className="weather-visualizer-box sun-visualizer">
+      <div className="shining-sun-glow" />
+      <div className="shining-sun-core">☀️</div>
+    </div>
+  );
+}
+
 export default function Recommend() {
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -503,16 +569,20 @@ export default function Recommend() {
   const [selectedSimilarityItem, setSelectedSimilarityItem] = useState(null);
   const [similarItems, setSimilarItems] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
-  
+
   // Occasion & Season states
   const [params, setParams] = useState({ occasion: 'casual', season: '' });
-  
+  const [customOccasion, setCustomOccasion] = useState('Cafe & Friends');
+
   // Weather states
-  const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny Day ☀️' });
+  const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny Day', forecast: [] });
   const [weatherLoading, setWeatherLoading] = useState(false);
   // const [simulatedWeather, setSimulatedWeather] = useState(null); // 'sunny', 'rainy', 'cold', 'windy' (Disabled by user request)
   const [locationName, setLocationName] = useState('Local Area');
-  
+  const [localWeather, setLocalWeather] = useState({ temp: 22, condition: 'Sunny Day', city: 'Local Area', forecast: [] });
+  const [destinationWeather, setDestinationWeather] = useState(null);
+  const [destinationQuery, setDestinationQuery] = useState('');
+
   // Try-on state
   const [tryOnOutfit, setTryOnOutfit] = useState(null);
   const [avatarSettings, setAvatarSettings] = useState(null);
@@ -524,6 +594,9 @@ export default function Recommend() {
   const [fitSettings, setFitSettings] = useState({});
   const [fitActiveSlot, setFitActiveSlot] = useState('top'); // 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory'
   const [showFitter, setShowFitter] = useState(false);
+
+  // AI Dressing Room (TryOn modal) state
+  const [tryOnModalOutfit, setTryOnModalOutfit] = useState(null);
 
   // Drag-to-rotate visualizer states
   const [isDragging, setIsDragging] = useState(false);
@@ -639,12 +712,12 @@ export default function Recommend() {
     if (isNeutral(hex1) || isNeutral(hex2)) return 85;
     if (isAnalogous(hex1, hex2)) return 80;
     if (isComplementary(hex1, hex2)) return 90;
-    
+
     const hsl1 = hexToHSL(hex1);
     const hsl2 = hexToHSL(hex2);
     const hueDiff = Math.abs(hsl1.h - hsl2.h);
     if ((hueDiff >= 110 && hueDiff <= 130) || (hueDiff >= 230 && hueDiff <= 250)) return 75;
-    
+
     return 60;
   };
 
@@ -659,6 +732,18 @@ export default function Recommend() {
 
   // Local Outfit Matchmaker Algorithm
   const generateLocalRecommendations = () => {
+    const checkOccasionMatch = (item, occasionId, customText) => {
+      if (!customText) return item.occasion?.includes(occasionId);
+      const query = customText.toLowerCase().trim();
+      const cleanOccasionId = occasionId.toLowerCase();
+      if (item.occasion?.includes(cleanOccasionId)) return true;
+      if (item.occasion?.some(occ => query.includes(occ.toLowerCase()) || occ.toLowerCase().includes(query))) return true;
+      if (item.name?.toLowerCase().includes(query)) return true;
+      if (item.brand?.toLowerCase().includes(query)) return true;
+      if (item.aesthetic?.toLowerCase().includes(query)) return true;
+      return false;
+    };
+
     const tops = clothes.filter((c) => c.category === 'tops');
     const bottoms = clothes.filter((c) => c.category === 'bottoms');
     const shoes = clothes.filter((c) => c.category === 'shoes');
@@ -689,8 +774,8 @@ export default function Recommend() {
           score += 25;
           reasons.push(`${top.aesthetic} style cohesion`);
         } else {
-          if ((top.aesthetic === 'Formal' && bottom.aesthetic === 'Activewear') || 
-              (top.aesthetic === 'Activewear' && bottom.aesthetic === 'Formal')) {
+          if ((top.aesthetic === 'Formal' && bottom.aesthetic === 'Activewear') ||
+            (top.aesthetic === 'Activewear' && bottom.aesthetic === 'Formal')) {
             score -= 10;
           } else {
             score += 8;
@@ -698,9 +783,9 @@ export default function Recommend() {
         }
 
         // 3. Occasion match
-        const topOccasionMatch = top.occasion?.includes(params.occasion);
-        const bottomOccasionMatch = bottom.occasion?.includes(params.occasion);
-        
+        const topOccasionMatch = checkOccasionMatch(top, params.occasion, customOccasion);
+        const bottomOccasionMatch = checkOccasionMatch(bottom, params.occasion, customOccasion);
+
         if (topOccasionMatch && bottomOccasionMatch) {
           score += 20;
           reasons.push('perfect occasion match');
@@ -712,7 +797,7 @@ export default function Recommend() {
           if (params.occasion === 'formal' && ['Formal', 'Minimal'].includes(top.aesthetic)) aestheticOk = true;
           if (params.occasion === 'sport' && ['Activewear'].includes(top.aesthetic)) aestheticOk = true;
           if (params.occasion === 'party' && ['Streetwear', 'Casual'].includes(top.aesthetic)) aestheticOk = true;
-          
+
           if (aestheticOk) {
             score += 12;
             reasons.push('aesthetic occasion match');
@@ -754,14 +839,14 @@ export default function Recommend() {
         // Pick optional outerwear
         let bestOuterwear = null;
         let bestOwScore = 0;
-        
+
         for (const ow of outerwear) {
           let owScore = colorHarmonyScore(ow.color?.primary, top.color?.primary) * 0.4 +
             colorHarmonyScore(ow.color?.primary, bottom.color?.primary) * 0.2;
-          
+
           if (ow.season?.includes(finalSeason)) owScore += 25;
           if (ow.aesthetic === top.aesthetic) owScore += 15;
-          
+
           if (owScore > bestOwScore) {
             bestOwScore = owScore;
             bestOuterwear = ow;
@@ -821,7 +906,7 @@ export default function Recommend() {
     const seen = new Set();
     const unique = [];
     for (const outfit of outfits) {
-    const key = `${outfit.items.top._id}-${outfit.items.bottom._id}`;
+      const key = `${outfit.items.top._id}-${outfit.items.bottom._id}`;
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(outfit);
@@ -840,14 +925,14 @@ export default function Recommend() {
     const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
 
     // 1. Core Occasion Setup
-    const occasionTitle = params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1);
+    const occasionTitle = customOccasion || (params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1));
     const occasionNouns = {
       casual: 'relaxed cafe hangout with friends',
       formal: 'professional corporate or formal meeting',
       sport: 'high-energy workout or active training session',
       party: 'vibrant night out or festive celebration'
     };
-    const occasionNoun = occasionNouns[params.occasion] || 'special outing';
+    const occasionNoun = customOccasion ? `outing to "${customOccasion}"` : (occasionNouns[params.occasion] || 'special outing');
 
     // 2. Weather Specific Commentary
     let weatherAdvice = '';
@@ -881,13 +966,13 @@ export default function Recommend() {
     const topStyle = top.aesthetic || 'Casual';
     const bottomStyle = bottom.aesthetic || 'Casual';
     let styleSynergy = `For your ${occasionNoun}, pairing your ${top.name} with the ${bottom.name} is a highly deliberate styling coordinate. `;
-    
+
     if (topStyle === bottomStyle) {
       styleSynergy += `This creates a highly unified, cohesive ${topStyle} silhouette. The ${top.fit} cut of the top establishes a beautiful aesthetic flow with the ${bottom.fit} drape of the bottom. `;
     } else {
       styleSynergy += `This establishes a balanced, high-low styling aesthetic that blends the ${topStyle} character of the top with the ${bottomStyle} outline of the bottom. The ${top.fit} shape of the top contrasts appealingly with the ${bottom.fit} design of the bottom, projecting absolute fashion confidence. `;
     }
-    
+
     styleSynergy += `Having a ${top.pattern} pattern matched with a ${bottom.pattern} structure keeps the visual detail focused and beautifully balanced.`;
 
     // 4. Color Theory Psychology
@@ -927,12 +1012,37 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
 
   // Load weather, customized avatar and fit adjustments from localStorage
   useEffect(() => {
-    // 1. Weather fetching with Geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => fetchRealWeather(pos.coords.latitude, pos.coords.longitude),
-        () => console.log('Geolocation permission denied, using mock weather')
-      );
+    // 1. Weather fetching with local cache check and IP geolocation lookup
+    const cachedLocal = localStorage.getItem('zyntra_local_weather');
+    if (cachedLocal) {
+      const parsed = JSON.parse(cachedLocal);
+      // If cache is less than 30 minutes old, load it instantly
+      if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+        setLocalWeather(parsed);
+        setWeather({ temp: parsed.temp, condition: parsed.condition });
+        setLocationName(parsed.city);
+        // Silent update in background
+        (async () => {
+          try {
+            const locRes = await fetch('https://ipapi.co/json/');
+            if (!locRes.ok) return;
+            const locData = await locRes.json();
+            if (locData && locData.latitude && locData.longitude) {
+              const city = locData.city || 'Local Area';
+              const wData = await fetchRealWeatherHelper(locData.latitude, locData.longitude);
+              const newLocal = { ...wData, city, timestamp: Date.now() };
+              setLocalWeather(newLocal);
+              localStorage.setItem('zyntra_local_weather', JSON.stringify(newLocal));
+            }
+          } catch (err) {
+            console.warn('Silent local weather update failed:', err);
+          }
+        })();
+      } else {
+        fetchWeatherByIP();
+      }
+    } else {
+      fetchWeatherByIP();
     }
 
     // 2. Load avatar settings
@@ -994,7 +1104,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
         accessory,
         temp: weather.temp,
         condition: weather.condition,
-        occasion: params.occasion
+        occasion: customOccasion || params.occasion
       });
       if (response.data && response.data.critique) {
         setStylistCritique(response.data.critique);
@@ -1029,12 +1139,12 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
 
   const handleSwapItem = (slot, newItem) => {
     if (!tryOnOutfit || !newItem) return;
-    
+
     // Normalize DB categories to slot names
     let slotName = slot;
     if (slot === 'tops') slotName = 'top';
     if (slot === 'bottoms') slotName = 'bottom';
-    
+
     const updatedOutfit = {
       ...tryOnOutfit,
       [slotName]: newItem
@@ -1055,53 +1165,151 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
     return () => clearInterval(interval);
   }, [autoRotate, tryOnOutfit]);
 
-  const fetchRealWeather = async (lat, lon) => {
+  const fetchRealWeatherHelper = async (lat, lon) => {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max&timezone=auto`);
+    if (!res.ok) throw new Error('Forecast API failed');
+    const data = await res.json();
+    const temp = Math.round(data.current.temperature_2m);
+    const code = data.current.weather_code;
+
+    let condition = 'Clear sky';
+    if (code > 0 && code <= 3) condition = 'Partly Cloudy';
+    else if (code >= 45 && code <= 48) condition = 'Foggy';
+    else if (code >= 51 && code <= 67) condition = 'Rainy';
+    else if (code >= 71 && code <= 77) condition = 'Snowy';
+    else if (code >= 80 && code <= 82) condition = 'Showers';
+    else if (code >= 95) condition = 'Thunderstorm';
+
+    let forecast = [];
+    if (data.daily && data.daily.time && data.daily.temperature_2m_max) {
+      const getDayName = (dateStr) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
+      };
+      forecast = data.daily.time.slice(1, 6).map((time, idx) => ({
+        day: getDayName(time),
+        temp: Math.round(data.daily.temperature_2m_max[idx + 1])
+      }));
+    }
+
+    return { temp, condition, forecast };
+  };
+
+  const fetchRealWeather = async (lat, lon, detectedCity = null) => {
     try {
       setWeatherLoading(true);
-      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`);
-      const data = await res.json();
-      const temp = Math.round(data.current.temperature_2m);
-      const code = data.current.weather_code;
-      
-      let condition = 'Clear sky ☀️';
-      if (code > 0 && code <= 3) condition = 'Partly Cloudy ⛅';
-      else if (code >= 45 && code <= 48) condition = 'Foggy 🌫️';
-      else if (code >= 51 && code <= 67) condition = 'Rainy 🌧️';
-      else if (code >= 71 && code <= 77) condition = 'Snowy ❄️';
-      else if (code >= 80 && code <= 82) condition = 'Showers 🌦️';
-      else if (code >= 95) condition = 'Thunderstorm ⛈️';
+      const wData = await fetchRealWeatherHelper(lat, lon);
+      setWeather(wData);
 
-      setWeather({ temp, condition });
-
-      // Resolve timezone city name dynamically for free
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const city = timezone ? timezone.split('/').pop().replace('_', ' ') : 'Local Area';
+      const city = detectedCity || (() => {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return timezone ? timezone.split('/').pop().replace('_', ' ') : 'Local Area';
+      })();
       setLocationName(city);
+
+      // Keep localWeather updated
+      setLocalWeather({ ...wData, city, timestamp: Date.now() });
     } catch (e) {
-      console.warn('Weather API failed, fallback active:', e.message);
+      console.warn('Weather API failed:', e.message);
     } finally {
       setWeatherLoading(false);
     }
   };
 
-  const handleFetchLiveWeather = () => {
-    if (navigator.geolocation) {
+  const fetchWeatherByIP = async () => {
+    try {
       setWeatherLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          await fetchRealWeather(pos.coords.latitude, pos.coords.longitude);
-          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          const city = timezone ? timezone.split('/').pop().replace('_', ' ') : 'Local Area';
-          success(`Live weather loaded for ${city}! 📍`);
-        },
-        (err) => {
-          console.warn('Geolocation permission denied:', err);
-          error('Location access denied. Please allow location permissions in your browser.');
-          setWeatherLoading(false);
+      const locRes = await fetch('https://ipapi.co/json/');
+      if (!locRes.ok) throw new Error('IP lookup response not OK');
+      const locData = await locRes.json();
+      
+      if (locData && locData.latitude && locData.longitude) {
+        const city = locData.city || 'Local Area';
+        const wData = await fetchRealWeatherHelper(locData.latitude, locData.longitude);
+        const newLocal = { ...wData, city, timestamp: Date.now() };
+        setLocalWeather(newLocal);
+        localStorage.setItem('zyntra_local_weather', JSON.stringify(newLocal));
+        
+        // Update active weather if no destination is currently active
+        if (!destinationWeather) {
+          setWeather(wData);
+          setLocationName(city);
         }
-      );
+        return { success: true, city };
+      } else {
+        throw new Error('Invalid IP coordinates');
+      }
+    } catch (err) {
+      console.warn('IP location fetch failed, using fallback:', err.message);
+      // Safe fallback
+      const fallbackData = { temp: 22, condition: 'Clear sky' };
+      setLocalWeather({ ...fallbackData, city: 'San Francisco', timestamp: Date.now() });
+      if (!destinationWeather) {
+        setWeather(fallbackData);
+        setLocationName('San Francisco');
+      }
+      return { success: false };
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const fetchDestinationWeather = async (cityName) => {
+    if (!cityName || !cityName.trim()) {
+      handleClearDestination();
+      return;
+    }
+    try {
+      setWeatherLoading(true);
+      const geocodeRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`);
+      if (!geocodeRes.ok) throw new Error('Geocoding query failed');
+      const geocodeData = await geocodeRes.json();
+
+      if (geocodeData.results && geocodeData.results.length > 0) {
+        const result = geocodeData.results[0];
+        const lat = result.latitude;
+        const lon = result.longitude;
+        const resolvedName = result.country ? `${result.name}, ${result.country}` : result.name;
+
+        const wData = await fetchRealWeatherHelper(lat, lon);
+        const destObj = { ...wData, city: resolvedName };
+        
+        setDestinationWeather(destObj);
+        setWeather(wData);
+        setLocationName(resolvedName);
+        success(`Target weather adjusted for: ${resolvedName}`);
+      } else {
+        error(`Could not locate: "${cityName}"`);
+      }
+    } catch (err) {
+      console.error('Destination geocode error:', err);
+      error('Failed to resolve target weather coordinates.');
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const handleSearchDestination = () => {
+    if (destinationQuery.trim()) {
+      fetchDestinationWeather(destinationQuery);
+    }
+  };
+
+  const handleClearDestination = () => {
+    setDestinationQuery('');
+    setDestinationWeather(null);
+    setWeather({ temp: localWeather.temp, condition: localWeather.condition, forecast: localWeather.forecast || [] });
+    setLocationName(localWeather.city);
+    success('Styling location reset to home coordinates.');
+  };
+
+  const handleFetchLiveWeather = async () => {
+    setWeatherLoading(true);
+    const result = await fetchWeatherByIP();
+    if (result && result.success) {
+      success(`Refreshed home location: ${result.city}! 📍`);
     } else {
-      error('Geolocation is not supported by your browser.');
+      error('Failed to update home location.');
     }
   };
 
@@ -1161,10 +1369,10 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
       <div className="container">
         <div className="recommend-header animate-fade-in">
           <div className="recommend-title-wrap" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
-            <h1 className="dashboard-title" style={{ margin: 0 }}>AI Styling</h1>
+            <h1 className="dashboard-title" style={{ margin: 0 }}>Your Runway AI Stylist</h1>
             <div className="ai-badge" style={{ margin: 0 }}>
               <div className="ai-dot" />
-              Zyntra Closet AI Engine v2
+              Zyntra Runway Engine v2
             </div>
           </div>
           <p className="dashboard-subtitle">Let Zyntra styling algorithms build custom wardrobe suggestions for your next event.</p>
@@ -1172,52 +1380,89 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
 
         {/* WEATHER BAR & OVERRIDES */}
         <div className="weather-dashboard glass-card animate-fade-in">
-          <div className="weather-current">
-            <div className="weather-temp-badge" style={{ color: activeWeather.color || 'var(--accent-violet-light)' }}>
-              {activeWeather.temp}°C
-            </div>
-            <div className="weather-info">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="weather-title">Local Weather ({locationName})</span>
-                <button 
-                  type="button" 
-                  onClick={handleFetchLiveWeather} 
-                  disabled={weatherLoading}
-                  className="btn btn-ghost" 
-                  style={{ padding: '2px 8px', fontSize: '0.75rem', height: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '999px', background: 'rgba(255,255,255,0.02)' }}
-                  title="Update weather using your live GPS location"
-                >
-                  {weatherLoading ? '⏳ updating...' : '📍 Fetch Live'}
-                </button>
+          <div className="weather-main-panel">
+            <div className="weather-current">
+              <div className="weather-temp-badge">
+                {weather.temp}°C
               </div>
-              <span className="weather-desc">{activeWeather.condition}</span>
+              <div className="weather-info">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="weather-title-status">
+                    {destinationWeather ? '📍 Destination Weather *' : '🏠 Current Location Weather *'}
+                  </span>
+                  {!destinationWeather && (
+                    <button
+                      type="button"
+                      onClick={handleFetchLiveWeather}
+                      disabled={weatherLoading}
+                      className="btn btn-ghost btn-fetch-live"
+                      title="Update local weather using IP lookup"
+                    >
+                      {weatherLoading ? '⏳ updating...' : '📍 Refresh'}
+                    </button>
+                  )}
+                </div>
+                <span className="weather-desc-location">{locationName}</span>
+                <span className="weather-desc-condition">{weather.condition}</span>
+                {weather.forecast && weather.forecast.length > 0 && (
+                  <div className="weather-forecast-row">
+                    {weather.forecast.map((f, i) => (
+                      <div key={i} className="forecast-pill">
+                        <span className="forecast-day-name">{f.day}</span>
+                        <span className="forecast-day-temp">{f.temp}°C</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+            
+            <WeatherVisualizer condition={weather.condition} />
           </div>
 
-          {/*
-          <div className="weather-overrides">
-            <span className="override-title">Simulate Weather:</span>
-            <div className="override-buttons">
-              {Object.keys(WEATHER_MOCK).map((key) => {
-                const active = simulatedWeather === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`override-btn ${active ? 'active' : ''}`}
-                    onClick={() => setSimulatedWeather(simulatedWeather === key ? null : key)}
-                    title={`Simulate ${key} conditions`}
-                  >
-                    {key === 'sunny' && '☀️ Sunny'}
-                    {key === 'rainy' && '🌧️ Rainy'}
-                    {key === 'cold' && '❄️ Cold'}
-                    {key === 'windy' && '💨 Windy'}
-                  </button>
-                );
-              })}
+          <div className="weather-controls-panel">
+            <div className="destination-search-box">
+              <label className="search-label">Traveling somewhere else?</label>
+              <div className="search-input-wrap">
+                <div className="search-input-inner">
+                  <input 
+                    type="text" 
+                    placeholder="Search city (e.g. Tokyo, Paris)..." 
+                    value={destinationQuery}
+                    onChange={(e) => setDestinationQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearchDestination(); }}
+                    className="destination-search-input"
+                  />
+                  {destinationQuery && (
+                    <button 
+                      onClick={handleClearDestination} 
+                      className="btn-clear-dest-x"
+                      title="Clear destination"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <button 
+                  onClick={handleSearchDestination} 
+                  disabled={weatherLoading} 
+                  className="btn btn-primary btn-search-dest"
+                >
+                  Search
+                </button>
+              </div>
+              <div className="weather-home-wrap" style={{ height: '24px', display: 'flex', alignItems: 'center', marginTop: '6px' }}>
+                {destinationWeather && (
+                  <div className="weather-home-below-search animate-fade-in" style={{ margin: 0 }}>
+                    🏠 Home: {localWeather.city} — {localWeather.temp}°C ({localWeather.condition})
+                  </div>
+                )}
+              </div>
             </div>
+            <span className="weather-disclaimer">
+              * Real-time weather forecasts are estimates and subject to API latency, geocoding offsets, or localized microclimatic variations.
+            </span>
           </div>
-          */}
         </div>
 
         {isWardrobeLow && (
@@ -1235,17 +1480,39 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
         )}
 
         <div className="recommend-controls glass-card animate-slide-up">
-          {/* Destination Selection Cards */}
+          {/* Destination Selection with Custom Text Input */}
           <div className="control-group">
-            <label className="section-eyebrow">Where are you going today? *</label>
+            <label>Where are you going today? *</label>
+            <div className="destination-input-container" style={{ marginBottom: '20px' }}>
+              <input
+                type="text"
+                className="destination-custom-input"
+                placeholder="e.g. Cafe & Friends, Office, Gym, Beach Party..."
+                value={customOccasion}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomOccasion(val);
+                  // Dynamic synchronization: match input to suggestion card
+                  const matched = DESTINATIONS.find(
+                    (d) => d.label.toLowerCase() === val.trim().toLowerCase()
+                  );
+                  if (matched) {
+                    setParams({ ...params, occasion: matched.id });
+                  }
+                }}
+              />
+            </div>
             <div className="destination-grid">
               {DESTINATIONS.map((dest) => {
-                const active = params.occasion === dest.id;
+                const active = params.occasion === dest.id && customOccasion.toLowerCase().trim() === dest.label.toLowerCase().trim();
                 return (
                   <div
                     key={dest.id}
                     className={`destination-card glass-card ${active ? 'active' : ''}`}
-                    onClick={() => setParams({ ...params, occasion: dest.id })}
+                    onClick={() => {
+                      setCustomOccasion(dest.label);
+                      setParams({ ...params, occasion: dest.id });
+                    }}
                   >
                     <div className="destination-icon">{dest.icon}</div>
                     <div className="destination-info">
@@ -1259,7 +1526,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
             </div>
           </div>
 
-          {/* Collapsible custom season override */}
+          {/* Specific Season Filter */}
           <div className="control-group">
             <label>Specific Season Filter (Optional)</label>
             <div className="chip-group">
@@ -1267,7 +1534,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                 className={`chip ${params.season === '' ? 'active' : ''}`}
                 onClick={() => setParams({ ...params, season: '' })}
               >
-                Auto (Based on weather)
+                Auto (Based On Weather)
               </button>
               {['spring', 'summer', 'fall', 'winter'].map((season) => (
                 <button
@@ -1275,7 +1542,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                   className={`chip ${params.season === season ? 'active' : ''}`}
                   onClick={() => setParams({ ...params, season: season })}
                 >
-                  {season}
+                  {season.charAt(0).toUpperCase() + season.slice(1)}
                 </button>
               ))}
             </div>
@@ -1344,10 +1611,11 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                       <button
                         className="btn btn-primary btn-sm btn-tryon"
                         onClick={() => {
-                          success('Avatar Try-On is planned as a future premium upgrade! 🚀');
+                          setTryOnModalOutfit(rec.items);
                         }}
+                        title="Open AI Dressing Room for this outfit"
                       >
-                        ✨ Try On Avatar
+                        ✨ Try It On
                       </button>
                     </div>
                   </div>
@@ -1367,10 +1635,10 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                         <div key={slot} className="rec-item glass-card">
                           <span className="rec-item-label">{slot}</span>
                           <div className="rec-item-img-wrap" style={{ borderColor: rec.items[slot].color?.primary || 'var(--border-subtle)' }}>
-                            <DressingItemImage 
-                              src={`http://localhost:5000${rec.items[slot].imageUrl}`} 
-                              alt={rec.items[slot].name || slot} 
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                            <DressingItemImage
+                              src={`http://localhost:5000${rec.items[slot].imageUrl}`}
+                              alt={rec.items[slot].name || slot}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                             />
                           </div>
                           <div className="rec-item-details">
@@ -1631,6 +1899,14 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
         </div>
       )}
       */}
+
+      {/* AI Dressing Room Modal */}
+      {tryOnModalOutfit && (
+        <TryOn
+          outfit={tryOnModalOutfit}
+          onClose={() => setTryOnModalOutfit(null)}
+        />
+      )}
     </div>
   );
 }
