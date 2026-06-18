@@ -266,6 +266,7 @@ export default function Upload() {
   const [tagInput, setTagInput] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [nameValidationError, setNameValidationError] = useState(null);
   // Trigger background removal on original image changes
   /* Comment out frontend local background removal process to eliminate UI lag
   useEffect(() => {
@@ -316,6 +317,7 @@ export default function Upload() {
       setBgRemovedUrl(null);
       setSamplingMode(false);
       setIsBgRemovalImperfect(false);
+      setNameValidationError(null);
     } else {
       error('Please select a valid image file');
     }
@@ -363,6 +365,9 @@ export default function Upload() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'name') {
+      setNameValidationError(null);
+    }
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === 'name') {
@@ -483,7 +488,12 @@ export default function Upload() {
         setIsClosing(false);
         setLoading(false);
       }, 400);
-      error(err.response?.data?.message || 'Failed to upload item');
+      if (err.response?.data?.message === 'Garment mismatch') {
+        setNameValidationError(err.response.data.detectedLabel);
+        error(`Upload Blocked: It appears like, ${err.response.data.detectedLabel}`);
+      } else {
+        error(err.response?.data?.message || 'Failed to upload item');
+      }
     }
   };
 
@@ -639,15 +649,25 @@ export default function Upload() {
             
             <div className="input-group">
               <label htmlFor="name">Item Name *</label>
-              <input
-                id="name"
-                name="name"
-                className="input"
-                placeholder="e.g., Black Denim Jacket"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  id="name"
+                  name="name"
+                  className={`input ${nameValidationError ? 'error-input' : ''}`}
+                  placeholder="e.g., Black Denim Jacket"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  style={{ width: '100%' }}
+                />
+                {nameValidationError && (
+                  <div className="name-validation-popup animate-fade-in">
+                    <span className="popup-arrow" />
+                    <span className="popup-icon">⚠️</span>
+                    <span className="popup-text">it appears like, {nameValidationError}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="input-group">

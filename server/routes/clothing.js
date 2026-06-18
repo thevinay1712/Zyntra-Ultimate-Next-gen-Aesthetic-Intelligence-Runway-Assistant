@@ -193,18 +193,21 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     let aiAesthetic = 'Casual';
     let aiFit = 'Regular';
     let aiStyleVector = [];
+    let detectedItemType = null;
+    let nameIsValid = true; // Default true; set to false by CLIP if name doesn't match image
 
     try {
       console.log('🧠 Querying Zyntra Closet AI service...');
       const formData = new FormData();
       formData.append('image', fs.createReadStream(req.file.path));
       formData.append('category', category || 'tops');
+      formData.append('item_name', name || '');  // Send name for CLIP semantic validation
 
       const aiResponse = await fetch('http://localhost:8000/analyze-clothing', {
         method: 'POST',
         body: formData,
         headers: formData.getHeaders(),
-        timeout: 10000 // 10-second timeout
+        timeout: 45000 // 45-second timeout — CLIP needs time to load model + run 2 inferences
       });
 
       if (aiResponse.ok) {
@@ -216,8 +219,13 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
         aiAesthetic = aiData.aesthetic;
         aiFit = aiData.fit;
         aiStyleVector = aiData.styleVector || [];
+        detectedItemType = aiData.detectedItemType;
+        // CLIP-based name validation result (true = name matches image semantically)
+        if (aiData.nameIsValid === false) {
+          nameIsValid = false;
+        }
 
-        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}, VectorLength=${aiStyleVector.length}`);
+        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}, VectorLength=${aiStyleVector.length}, DetectedType=${detectedItemType}, NameIsValid=${nameIsValid}`);
       } else {
         console.warn('AI Service returned non-ok status:', aiResponse.status);
       }
@@ -236,6 +244,21 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
         details: aiQualityDetails
       });
     }
+
+    // 3. Garment name validation — fully AI-driven via CLIP semantic similarity (no hardcoded keywords)
+    // The AI service compares the image against "a photo of [user's name]" and returns nameIsValid.
+    if (!nameIsValid) {
+      console.warn(`[UPLOAD REJECTION] CLIP rejected name "${name}" for detected garment "${detectedItemType}" — semantically mismatched.`);
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
+      return res.status(400).json({
+        message: 'Garment mismatch',
+        detectedType: detectedItemType,
+        detectedLabel: detectedItemType || 'garment'
+      });
+    }
+
 
     // Extract colors (use AI colors if available, otherwise run local fallback)
     let colorData = { primary: '#888888', secondary: '', palette: [] };

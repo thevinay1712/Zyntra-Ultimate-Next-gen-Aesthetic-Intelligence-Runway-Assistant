@@ -64,6 +64,7 @@ export const outfitAPI = {
 export const recommendAPI = {
   get: (params) => api.get('/recommend', { params }),
   getStylistCritique: (data) => api.post('/recommend/stylist-critique', data),
+  analyzeDestination: (data) => api.post('/recommend/analyze-destination', data),
 };
 
 // Image Search (Zyntra Web Finder)

@@ -1263,3 +1263,277 @@
   max-width: 320px;
 }
 
+/* ========================================================
+   DESTINATION VALIDATION & STYLE PREP GUIDE
+   ======================================================== */
+.destination-feedback-wrapper {
+  animation: slideInDown 0.3s ease-out forwards;
+}
+
+/* Warnings */
+.destination-warning-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(239, 68, 68, 0.05) !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.1), inset 0 0 8px rgba(239, 68, 68, 0.05);
+  border-radius: var(--radius-lg);
+}
+
+.destination-warning-card .warning-icon {
+  font-size: 1.5rem;
+}
+
+.destination-warning-card .warning-content h4 {
+  margin: 0 0 4px 0;
+  color: #fca5a5;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.destination-warning-card .warning-content p {
+  margin: 0;
+  color: #fecaca;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Travel Prep Guide Card */
+.destination-advice-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all var(--transition-base);
+}
+
+.destination-advice-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.destination-advice-card .advice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.destination-advice-card .advice-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-violet-light);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.destination-advice-card .advice-category {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-violet-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  text-transform: capitalize;
+}
+
+.destination-advice-card .advice-text {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.destination-advice-card .advice-weather-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.destination-advice-card .weather-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  color: var(--text-primary);
+}
+
+/* Skeletons */
+.destination-advice-card.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.03) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+.skeleton-line.title {
+  height: 16px;
+  width: 40%;
+  margin-bottom: 6px;
+}
+
+.skeleton-line.paragraph {
+  height: 12px;
+  width: 100%;
+}
+
+.skeleton-line.paragraph.short {
+  width: 75%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ========================================================
+   WARDROBE LACKING / E-COMMERCE REDIRECTS
+   ======================================================== */
+.wardrobe-lacking-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  background: rgba(239, 68, 68, 0.02) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3) !important;
+  border-radius: var(--radius-xl) !important;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.warning-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.warning-card-header .warning-emoji {
+  font-size: 2rem;
+  animation: alarm-pulse 1s ease infinite alternate;
+}
+
+@keyframes alarm-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 5px rgba(239,68,68,0.5)); }
+}
+
+.wardrobe-lacking-state .empty-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+  color: #ef4444;
+}
+
+.wardrobe-lacking-state .empty-subtitle {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 540px;
+  margin: 0 auto 32px auto;
+}
+
+.ecommerce-redirect-section {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 24px;
+}
+
+.ecommerce-prompt {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.ecommerce-platforms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+@media (min-width: 480px) {
+  .ecommerce-platforms-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.ecommerce-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.ecommerce-card .brand-logo-svg {
+  transition: all var(--transition-base);
+}
+
+.ecommerce-card .shop-arrow {
+  font-size: 0.85rem;
+  opacity: 0.5;
+  transition: all var(--transition-base);
+  margin-left: 6px;
+}
+
+/* Hover effects for each platform */
+.ecommerce-card:hover {
+  transform: translateY(-3px);
+  color: var(--text-primary);
+}
+
+.ecommerce-card:hover .shop-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.ecommerce-card.amazon:hover {
+  background: rgba(255, 153, 0, 0.06);
+  border-color: rgba(255, 153, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 153, 0, 0.1);
+}
+
+.ecommerce-card.flipkart:hover {
+  background: rgba(40, 116, 240, 0.06);
+  border-color: rgba(40, 116, 240, 0.3);
+  box-shadow: 0 4px 15px rgba(40, 116, 240, 0.1);
+}
+
+.ecommerce-card.myntra:hover {
+  background: rgba(255, 63, 108, 0.06);
+  border-color: rgba(255, 63, 108, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 63, 108, 0.1);
+}
+
+.ecommerce-card.ajio:hover {
+  background: rgba(47, 218, 184, 0.06);
+  border-color: rgba(47, 218, 184, 0.3);
+  box-shadow: 0 4px 15px rgba(47, 218, 184, 0.1);
+}
+
+
