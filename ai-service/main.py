@@ -84,7 +84,8 @@ async def api_remove_bg(file: UploadFile = File(...)):
 @app.post("/analyze-clothing")
 async def api_analyze_clothing(
     image: UploadFile = File(...),
-    category: str = Form("tops")
+    category: str = Form("tops"),
+    item_name: str = Form("")
 ):
     """
     Core Wardrobe Intelligence endpoint.
@@ -105,15 +106,17 @@ async def api_analyze_clothing(
 
         # 1. Segment garment to isolate foreground clothes
         try:
-            segmented_bytes, _, alpha_mask = segment_garment(contents)
+            segmented_bytes, cv2_img_bgra, alpha_mask = segment_garment(contents)
+            img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
         except Exception as e:
             # Fallback if rembg fails (e.g. invalid format or background removal model error)
             segmented_bytes = contents
             alpha_mask = np.ones(img_bgr.shape[:2], dtype=np.uint8) * 255
+            img_bgr_isolated = img_bgr
             print(f"Rembg segmenter fallback: {e}")
 
         # 2. Verify Upload Quality Status
-        quality, quality_details = analyze_upload_quality(img_bgr, alpha_mask)
+        quality, quality_details = analyze_upload_quality(img_bgr_isolated, alpha_mask)
 
         # 3. Fashion Feature Extraction (if quality is not Bad)
         dominant_colors = ["#888888", "#bbbbbb", "#dddddd"]
@@ -122,31 +125,107 @@ async def api_analyze_clothing(
         aesthetic = "Casual"
         fit = "Regular"
         style_vector = []
+        detected_item = "item"
+        name_is_valid = True  # Default: allow if CLIP is unavailable
 
         if quality != "Bad":
             # Extract dominant colors
-            dominant_colors, primary_color = extract_color_palette(img_bgr, alpha_mask)
+            dominant_colors, primary_color = extract_color_palette(img_bgr_isolated, alpha_mask)
             # Classify garment pattern
-            pattern = classify_garment_pattern(img_bgr, alpha_mask)
+            pattern = classify_garment_pattern(img_bgr_isolated, alpha_mask)
             # Classify style aesthetic & estimated fit
             aesthetic, fit = determine_aesthetic(category, primary_color, pattern)
 
-            # 4. Generate local L2-Normalized CLIP style vector for cost-free aesthetic searches
+            # 4. Generate local L2-Normalized CLIP style vector and zero-shot classify garment type
             try:
                 model, processor = clip_wrapper.load()
                 pil_img = Image.open(io.BytesIO(segmented_bytes)).convert("RGB")
-                inputs = processor(images=pil_img, return_tensors="pt")
-                with torch.no_grad():
-                    image_features = model.get_image_features(**inputs)
+                
+                labels_map = {
+                    "shirt": ["a photo of a button-down shirt", "a photo of a blouse", "a photo of a sweater", "a photo of a top"],
+                    "tshirt": ["a photo of a t-shirt", "a photo of a tee shirt"],
+                    "pant": ["a photo of pants", "a photo of trousers", "a photo of jeans", "a photo of sweatpants"],
+                    "shorts": ["a photo of shorts"],
+                    "skirt": ["a photo of a skirt"],
+                    "shoe": ["a photo of shoes", "a photo of sneakers", "a photo of boots", "a photo of footwear"],
+                    "jacket": ["a photo of a jacket", "a photo of a coat", "a photo of a blazer", "a photo of outerwear"],
+                    "watch": ["a photo of a wristwatch", "a photo of a watch"],
+                    "accessory": ["a photo of a belt", "a photo of sunglasses", "a photo of a hat", "a photo of a bag"]
+                }
+                
+                # Flatten candidate texts for CLIP
+                flat_texts = []
+                text_to_cat = {}
+                for cat, texts in labels_map.items():
+                    for text in texts:
+                        flat_texts.append(text)
+                        text_to_cat[text] = cat
 
-                # Apply L2 Normalization so dot product = cosine similarity
+                inputs = processor(text=flat_texts, images=pil_img, return_tensors="pt", padding=True)
+                with torch.no_grad():
+                    outputs = model(**inputs)
+                    logits_per_image = outputs.logits_per_image
+                    probs = logits_per_image.softmax(dim=1)
+                    best_idx = probs.argmax().item()
+                    best_text = flat_texts[best_idx]
+                    detected_item = text_to_cat[best_text]
+                    print(f"[CLIP Classify] best_text='{best_text}' => detected_item='{detected_item}'")
+
+                # 5. CLIP-based name validation — multi-candidate (robust, no hardcoded keywords)
+                # Adds user's name to the full garment prompt pool and checks that it scores
+                # at least 50% of the best-matching prompt for the detected garment type.
+                # "Blue pant" for a shirt image: shirt prompts dominate → name_prob far below threshold → REJECT
+                # "Blue Oxford Shirt" for a shirt image: name scores near/above shirt prompts → ACCEPT
+                if item_name.strip() and detected_item != "item":
+                    try:
+                        name_prompt = f"a photo of {item_name.strip()}"
+                        # Prepend user's name to the full garment prompt list
+                        all_val_texts = [name_prompt] + flat_texts
+                        val_inputs = processor(
+                            text=all_val_texts,
+                            images=pil_img,
+                            return_tensors="pt",
+                            padding=True
+                        )
+                        with torch.no_grad():
+                            val_outputs = model(**val_inputs)
+                            val_probs = val_outputs.logits_per_image.softmax(dim=1)[0]
+
+                        name_prob = val_probs[0].item()
+
+                        # Find best probability among all prompts for the detected garment category
+                        detected_prompts = labels_map.get(detected_item, [])
+                        detected_probs = [
+                            val_probs[all_val_texts.index(p)].item()
+                            for p in detected_prompts if p in all_val_texts
+                        ]
+                        best_detected_prob = max(detected_probs) if detected_probs else 0.0
+
+                        # Valid if user's name achieves at least 50% of the detected garment's best score.
+                        # "Blue pant" for shirt:  name~0.01 vs shirt_best~0.15 → 0.01/0.15=0.07 < 0.50 → REJECT
+                        # "Blue Oxford Shirt":    name~0.14 vs shirt_best~0.15 → 0.14/0.15=0.93 >= 0.50 → ACCEPT
+                        # "Cartoon Network" pant: name~0.005 vs pant_best~0.12 → 0.005/0.12=0.04 < 0.50 → REJECT
+                        ratio = (name_prob / best_detected_prob) if best_detected_prob > 0 else 0.0
+                        name_is_valid = ratio >= 0.50
+                        print(f"[CLIP Name Validation] name='{item_name}', name_prob={name_prob:.4f}, best_detected={best_detected_prob:.4f}, ratio={ratio:.2f}, valid={name_is_valid}")
+                    except Exception as val_err:
+                        print(f"[CLIP Name Validation] Failed, defaulting to valid: {val_err}")
+                        name_is_valid = True  # Fail open — never block on AI error
+
+
+                # Generate CLIP style vector
+                inputs_v = processor(images=pil_img, return_tensors="pt")
+                with torch.no_grad():
+                    image_features = model.get_image_features(**inputs_v)
                 features_tensor = image_features.pooler_output[0]
                 norm = torch.linalg.norm(features_tensor)
                 normalized_tensor = features_tensor / norm if norm > 0 else features_tensor
                 style_vector = normalized_tensor.tolist()
             except Exception as clip_err:
-                print(f"CLIP embedding extraction failed, fallback active: {clip_err}")
+                print(f"CLIP embedding/classification failed, fallback active: {clip_err}")
                 style_vector = []
+                detected_item = "item"
+                name_is_valid = True  # Fail open
 
         return JSONResponse(content={
             "success": True,
@@ -160,7 +239,9 @@ async def api_analyze_clothing(
             "pattern": pattern,
             "aesthetic": aesthetic,
             "fit": fit,
-            "styleVector": style_vector
+            "styleVector": style_vector,
+            "detectedItemType": detected_item,
+            "nameIsValid": name_is_valid
         })
 
     except HTTPException:

@@ -925,4 +925,50 @@
   transform: translateY(30px) scale(0.95);
 }
 
+/* --- Mismatch Validation Popup Styles --- */
+.error-input {
+  border-color: var(--accent-coral) !important;
+  box-shadow: 0 0 0 3px var(--accent-coral-soft), inset 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+.name-validation-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(244, 63, 94, 0.95); /* Glowing crimson */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.813rem;
+  font-weight: 600;
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.name-validation-popup .popup-arrow {
+  position: absolute;
+  top: -6px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(244, 63, 94, 0.95);
+}
+
+.name-validation-popup .popup-icon {
+  font-size: 0.9rem;
+}
+
+.name-validation-popup .popup-text {
+  letter-spacing: 0.01em;
+}
+
+
 

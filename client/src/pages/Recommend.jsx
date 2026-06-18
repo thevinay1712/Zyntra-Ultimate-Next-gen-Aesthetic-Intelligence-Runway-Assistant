@@ -12,6 +12,44 @@ const IconRefresh = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><pol
 const IconX = () => <svg viewBox="0 0 24 24" className="icon"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 const IconSettings = () => <svg viewBox="0 0 24 24" className="icon icon-sm"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
 
+/* E-Commerce Brand Logos */
+const LogoAmazon = () => (
+  <svg viewBox="0 0 100 30" className="brand-logo-svg" height="20">
+    <text x="0" y="18" fill="currentColor" fontWeight="800" fontSize="16" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-0.5">amazon</text>
+    <path d="M12 21 C25 25, 42 25, 52 21 C54 20, 55 21, 53 22 C44 27, 21 27, 10 22 C9 21, 10 20, 12 21 Z" fill="#ff9900" />
+    <path d="M51 18 C52 19, 51 20, 50 20 C47 21, 44 18, 44 16 C44 15, 45 15, 46 16 C47 17, 50 18, 51 18 Z" fill="#ff9900" />
+  </svg>
+);
+
+const LogoFlipkart = () => (
+  <svg viewBox="0 0 100 30" className="brand-logo-svg" height="20">
+    <rect x="0" y="3" width="18" height="18" rx="3" fill="#2874f0" />
+    <path d="M4 10 L8 14 L14 8" stroke="#ffe11b" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <text x="23" y="18" fill="currentColor" fontWeight="bold" fontSize="14" fontFamily="system-ui, -apple-system, sans-serif">Flipkart</text>
+  </svg>
+);
+
+const LogoMyntra = () => (
+  <svg viewBox="0 0 100 30" className="brand-logo-svg" height="20">
+    <path d="M5 21 L5 5 L11 15 L17 5 L17 21" stroke="url(#myntraGrad)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <defs>
+      <linearGradient id="myntraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ff3f6c" />
+        <stop offset="100%" stopColor="#f7a228" />
+      </linearGradient>
+    </defs>
+    <text x="25" y="18" fill="currentColor" fontWeight="bold" fontSize="14" fontFamily="system-ui, -apple-system, sans-serif">Myntra</text>
+  </svg>
+);
+
+const LogoAjio = () => (
+  <svg viewBox="0 0 80 30" className="brand-logo-svg" height="20">
+    <text x="0" y="18" fill="currentColor" fontWeight="bold" fontSize="16" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="0.5">AJIO</text>
+    <circle cx="50" cy="16" r="2.5" fill="#2fdab8" />
+  </svg>
+);
+
+
 const DESTINATIONS = [
   { id: 'casual', label: 'Cafe & Friends', icon: '☕', desc: 'Relaxed hangout, casual lunches, daily runs' },
   { id: 'formal', label: 'Office & Business', icon: '💼', desc: 'Meetings, work, interviews, classic dinners' },
@@ -573,6 +611,11 @@ export default function Recommend() {
   // Occasion & Season states
   const [params, setParams] = useState({ occasion: 'casual', season: '' });
   const [customOccasion, setCustomOccasion] = useState('Cafe & Friends');
+
+  // Destination analysis state for real-time validation and styling prep
+  const [destinationAnalysis, setDestinationAnalysis] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
 
   // Weather states
   const [weather, setWeather] = useState({ temp: 22, condition: 'Sunny Day', forecast: [] });
@@ -1165,6 +1208,118 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
     return () => clearInterval(interval);
   }, [autoRotate, tryOnOutfit]);
 
+  // Debounced API call to analyze destination for validation and dynamic guidance
+  useEffect(() => {
+    if (!customOccasion.trim()) {
+      setDestinationAnalysis(null);
+      setAnalysisError(null);
+      return;
+    }
+
+    const query = customOccasion.toLowerCase().trim();
+    
+    // 1. Off-topic/inappropriate location keywords check
+    const offTopicKeywords = ['toilet', 'bathroom', 'restroom', 'washroom', 'wc', 'poop', 'pee', 'shit', 'urinal', 'garbage', 'trash', 'dumpster', 'sewer', 'sewage', 'lavatory', 'commode'];
+    const isOffTopic = offTopicKeywords.some(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\w*\\b`, 'i');
+      return regex.test(query);
+    });
+
+    if (isOffTopic) {
+      setAnalysisError(`"${customOccasion}" is not a suitable outing location for Zyntra wardrobe styling. Please enter a standard location or activity (e.g. Cafe, Office, Gym, Party, Dinner).`);
+      setDestinationAnalysis(null);
+      return;
+    }
+
+    // 2. Gibberish detection check (no vowels in words > 3 characters)
+    const words = query.split(/\s+/);
+    for (const word of words) {
+      if (/^[a-zA-Z]+$/.test(word) && word.length > 3) {
+        const hasVowels = /[aeiouy]/i.test(word);
+        if (!hasVowels) {
+          setAnalysisError(`"${customOccasion}" seems to be gibberish or unrecognized. Please enter a real location or activity (e.g., Office, Gym, Cafe with friends).`);
+          setDestinationAnalysis(null);
+          return;
+        }
+      }
+    }
+
+    // Repeated characters check
+    if (/(.)\1{3,}/.test(query)) {
+      setAnalysisError(`"${customOccasion}" contains too many repeated characters. Please enter a real location or activity.`);
+      setDestinationAnalysis(null);
+      return;
+    }
+
+    // Consonant clusters check
+    const consonantClusters = query.match(/[^aeiouy\s]{5,}/g);
+    if (consonantClusters) {
+      setAnalysisError(`"${customOccasion}" contains unrecognized consonant combinations. Please enter a real location or activity.`);
+      setDestinationAnalysis(null);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setAnalysisLoading(true);
+      setAnalysisError(null);
+      try {
+        const res = await recommendAPI.analyzeDestination({
+          destination: customOccasion,
+          temp: weather.temp,
+          condition: weather.condition,
+          season: params.season
+        });
+        
+        if (res.data) {
+          if (res.data.valid === false) {
+            setAnalysisError(res.data.message || 'Invalid destination. Please enter a real location or activity.');
+            setDestinationAnalysis(null);
+          } else {
+            setDestinationAnalysis(res.data);
+            setAnalysisError(null);
+            if (res.data.category) {
+              setParams(prev => ({ ...prev, occasion: res.data.category }));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Destination analysis failed, using local fallback:', err);
+        // Generate local template styling guidance so validation still works if API/LLM fails
+        let category = 'casual';
+        if (query.includes('office') || query.includes('work') || query.includes('business') || query.includes('meeting') || query.includes('interview') || query.includes('conference') || query.includes('formal') || query.includes('suit')) {
+          category = 'formal';
+        } else if (query.includes('gym') || query.includes('workout') || query.includes('run') || query.includes('sport') || query.includes('active') || query.includes('train') || query.includes('trek') || query.includes('hike') || query.includes('climb') || query.includes('football') || query.includes('soccer') || query.includes('fit')) {
+          category = 'sport';
+        } else if (query.includes('party') || query.includes('club') || query.includes('night') || query.includes('bar') || query.includes('pub') || query.includes('celebrat') || query.includes('festive') || query.includes('dance') || query.includes('concert')) {
+          category = 'party';
+        }
+
+        let advice = `Perfect day for a casual trip to "${customOccasion}". `;
+        const isCold = weather.temp < 15;
+        const isRainy = weather.condition.toLowerCase().includes('rain') || weather.condition.toLowerCase().includes('shower');
+
+        if (category === 'formal') {
+          advice = `For your formal event at "${customOccasion}", dress professionally. ${isCold ? `Under ${weather.temp}°C conditions, we suggest a tailored trench coat or thick blazer layered over a structured shirt, paired with smart trousers and premium leather shoes.` : isRainy ? `With wet weather outdoors, layer a breathable blazer over your shirt and wear water-resistant dress boots to stay clean and sharp.` : `Opt for a lightweight linen or cotton blazer, matching trousers, and clean oxfords to stay cool yet elegant.`}`;
+        } else if (category === 'sport') {
+          advice = `Heading out for sports/activewear to "${customOccasion}". ${isCold ? `At a chilly ${weather.temp}°C, a high-performance thermal compression top paired with tech fleece joggers and trainers is ideal.` : isRainy ? `Under wet conditions, wear a water-repellent windbreaker, sweat-wicking active pants, and grippy running shoes.` : `Keep it light with a breathable athletic tee, sweat-wicking training shorts, and your favorite active sneakers.`}`;
+        } else if (category === 'party') {
+          advice = `Getting ready for a night out/party at "${customOccasion}"! ${isCold ? `Stay warm yet stylish in a premium leather jacket layered over a smart fitted top, paired with dark jeans or a chic skirt and boots.` : isRainy ? `Keep your look pristine with an aesthetic outer shell jacket, tailored bottoms, and stylish leather footwear to resist the elements.` : `Opt for a sleek statement shirt, tailored trousers or shorts, and trendy sneakers to stand out under the lights.`}`;
+        } else {
+          advice = `Perfect day for a casual trip to "${customOccasion}". ${isCold ? `For the ${weather.temp}°C chilly weather, cozy up in a warm knitted sweater or hoodie, styled with comfortable denim jeans and casual trainers.` : isRainy ? `Bring along a stylish water-resistant windbreaker or light utility jacket over a comfortable tee, paired with casual boots.` : `Enjoy the clear day in a classic graphic tee, casual cargo pants or shorts, and minimal canvas sneakers.`}`;
+        }
+
+        setDestinationAnalysis({ valid: true, category, advice });
+        setAnalysisError(null);
+        setParams(prev => ({ ...prev, occasion: category }));
+      } finally {
+        setAnalysisLoading(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [customOccasion, weather.temp, weather.condition, params.season]);
+
+
   const fetchRealWeatherHelper = async (lat, lon) => {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max&timezone=auto`);
     if (!res.ok) throw new Error('Forecast API failed');
@@ -1548,10 +1703,50 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
             </div>
           </div>
 
+          {/* Real-time Validation and Styling Advisory Guide */}
+          {(analysisLoading || analysisError || destinationAnalysis) && (
+            <div className="destination-feedback-wrapper" style={{ marginTop: '20px', marginBottom: '20px' }}>
+              {analysisLoading && (
+                <div className="destination-advice-card loading glass-card">
+                  <div className="skeleton-line title" />
+                  <div className="skeleton-line paragraph" />
+                  <div className="skeleton-line paragraph short" />
+                </div>
+              )}
+
+              {!analysisLoading && analysisError && (
+                <div className="destination-warning-card glass-card">
+                  <div className="warning-icon">⚠️</div>
+                  <div className="warning-content">
+                    <h4>Destination Unrecognized</h4>
+                    <p>{analysisError}</p>
+                  </div>
+                </div>
+              )}
+
+              {!analysisLoading && !analysisError && destinationAnalysis && (
+                <div className="destination-advice-card glass-card animate-fade-in">
+                  <div className="advice-header">
+                    <span className="advice-badge">✈️ Zyntra Travel Prep Guide</span>
+                    <span className="advice-category">Category: {destinationAnalysis.category}</span>
+                  </div>
+                  <div className="advice-body">
+                    <p className="advice-text">{destinationAnalysis.advice}</p>
+                    <div className="advice-weather-summary">
+                      <span className="weather-pill">🌡️ {weather.temp}°C</span>
+                      <span className="weather-pill">☁️ {weather.condition}</span>
+                      {params.season && <span className="weather-pill">🍂 {params.season}</span>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             className="btn btn-primary btn-lg btn-generate"
             onClick={handleGenerate}
-            disabled={loading}
+            disabled={loading || !!analysisError || analysisLoading}
           >
             {loading ? <span className="loader-spinner" style={{ width: 20, height: 20 }} /> : <><IconCpu /> Generate Styling</>}
           </button>
@@ -1667,9 +1862,61 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
             </div>
           </div>
         ) : hasSearched ? (
-          <div className="empty-state animate-fade-in">
-            <h3 className="empty-title">Wardrobe count low</h3>
-            <p className="empty-subtitle">We couldn't align enough Tops and Bottoms from your wardrobe to generate styling combinations. Try uploading more clothing items with the guidelines!</p>
+          <div className="empty-state wardrobe-lacking-state animate-fade-in glass-card">
+            <div className="warning-card-header">
+              <span className="warning-emoji">🚨</span>
+              <h3 className="empty-title">Wardrobe Refresh Required</h3>
+            </div>
+            <p className="empty-subtitle">
+              You lack the clothes suitable for this trip. Please refresh your wardrobe with new clothes that can suit this.
+            </p>
+            <div className="ecommerce-redirect-section">
+              <p className="ecommerce-prompt">
+                If you need, I can toggle you to any of the e-commerce platforms to discover matching outfits:
+              </p>
+              <div className="ecommerce-platforms-grid">
+                <a 
+                  href="https://www.amazon.in/s?k=clothing" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="ecommerce-card amazon"
+                  title="Shop clothing on Amazon"
+                >
+                  <LogoAmazon />
+                  <span className="shop-arrow">→</span>
+                </a>
+                <a 
+                  href="https://www.flipkart.com/clothing-and-accessories/pr?sid=clo" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="ecommerce-card flipkart"
+                  title="Shop clothing on Flipkart"
+                >
+                  <LogoFlipkart />
+                  <span className="shop-arrow">→</span>
+                </a>
+                <a 
+                  href="https://www.myntra.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="ecommerce-card myntra"
+                  title="Shop clothing on Myntra"
+                >
+                  <LogoMyntra />
+                  <span className="shop-arrow">→</span>
+                </a>
+                <a 
+                  href="https://www.ajio.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="ecommerce-card ajio"
+                  title="Shop clothing on Ajio"
+                >
+                  <LogoAjio />
+                  <span className="shop-arrow">→</span>
+                </a>
+              </div>
+            </div>
           </div>
         ) : null}
       </div>
