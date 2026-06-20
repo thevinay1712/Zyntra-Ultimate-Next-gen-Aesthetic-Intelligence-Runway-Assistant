@@ -810,6 +810,14 @@ export default function Recommend() {
       if (cleanOccasion === 'party') {
         if (item.aesthetic === 'Activewear') return -25;
       }
+
+      if (cleanOccasion === 'casual') {
+        if (item.aesthetic === 'Formal') return -20;
+        const lowerName = item.name.toLowerCase();
+        if (lowerName.includes('blazer') || lowerName.includes('suit') || lowerName.includes('tuxedo')) {
+          return -40; // Avoid blazers for casual outings like "school" or "cafe"
+        }
+      }
       
       return 0;
     };
@@ -981,9 +989,10 @@ export default function Recommend() {
         else if (reasons.includes('perfect occasion match')) mainReason = `Perfect ${params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1)} Match`;
         else if (reasons.length > 0) mainReason = reasons[0];
 
+        const isOuterwearAppropriate = isColdWeather || params.season === 'winter' || params.season === 'fall' || params.occasion === 'formal';
         const items = { top, bottom };
         if (bestShoe && bestShoeScore > 0) items.shoes = bestShoe;
-        if (bestOuterwear && (isColdWeather || bestOwScore > 40)) items.outerwear = bestOuterwear;
+        if (bestOuterwear && isOuterwearAppropriate && bestOwScore > 40) items.outerwear = bestOuterwear;
         if (bestAccessory && bestAccScore > 0) items.accessory = bestAccessory;
 
         outfits.push({
