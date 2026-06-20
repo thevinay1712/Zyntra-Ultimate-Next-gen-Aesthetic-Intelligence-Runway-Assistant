@@ -1054,12 +1054,27 @@ export default function Recommend() {
     return missing;
   };
 
-  const generateAIAdviceText = (topOutfit) => {
+  const generateAIAdviceText = (topOutfit, hasWarnings = false) => {
     if (!topOutfit) return '';
 
     const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
     const occasionTitle = customOccasion || (params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1));
     const colorNote = topOutfit.colorNote;
+
+    if (hasWarnings) {
+      let text = `For your ${occasionTitle} outing in ${locationName}, pairing the ${top.name} with the ${bottom.name} may serve as a temporary fallback coordinate (${colorNote.toLowerCase()}). `;
+      
+      if (outerwear || shoes || accessory) {
+        const details = [];
+        if (outerwear) details.push(`layering with the ${outerwear.name}`);
+        if (shoes) details.push(`anchoring with the ${shoes.name}`);
+        if (accessory) details.push(`finishing with the ${accessory.name}`);
+        text += `Completing this coordinate by ${details.join(', and ')} may help adapt the look, though it may not fully suit the dress code for this outgoing.`;
+      } else {
+        text += `However, please note that this temporary combination may not fully suit the dress code for this outgoing.`;
+      }
+      return text;
+    }
 
     let text = `For your ${occasionTitle} outing in ${locationName}, pairing the ${top.name} with the ${bottom.name} creates an elegant, visually balanced ${top.aesthetic.toLowerCase()} silhouette (${colorNote.toLowerCase()}). `;
     
@@ -1158,6 +1173,14 @@ export default function Recommend() {
 
   const fetchLLMCritique = async (topOutfit) => {
     if (!topOutfit) return;
+
+    // If they lack proper garments, bypass LLM API and use local fallback advice with warnings
+    if (checkMissingProperGarments().length > 0) {
+      setStylistCritique(generateAIAdviceText(topOutfit, true));
+      setCritiqueLoading(false);
+      return;
+    }
+
     setCritiqueLoading(true);
     setStylistCritique('');
     try {
@@ -1832,7 +1855,7 @@ export default function Recommend() {
                   </div>
                 ) : (
                   <p className="advisor-text">
-                    {stylistCritique || generateAIAdviceText(recommendations[0])}
+                    {stylistCritique || generateAIAdviceText(recommendations[0], missingProperGarments.length > 0)}
                   </p>
                 )}
               </div>
