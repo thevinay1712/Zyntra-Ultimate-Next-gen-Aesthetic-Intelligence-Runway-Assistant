@@ -201,12 +201,16 @@ async def api_analyze_clothing(
                 # "Blue Oxford Shirt" for a shirt image: name scores near/above shirt prompts → ACCEPT
                 if item_name.strip() and detected_item != "item":
                     try:
-                        # CLIP-driven text-to-text semantic matching to validate garment names.
-                        # Evaluates if the user's name maps to the correct category and filters out gibberish.
-                        categories = ['shirt', 't-shirt', 'pants', 'shorts', 'skirt', 'shoes', 'jacket', 'watch', 'accessory']
-                        cat_prompts = [f"a photo of a {c}" for c in categories]
+                        # CLIP-driven text-to-text semantic matching.
+                        # Step 1: Compare name against garment categories + non-garment anchors.
+                        # Non-garment anchors ensure person names / brand names / gibberish lose.
+                        garment_categories = ['shirt', 't-shirt', 'pants', 'shorts', 'skirt', 'shoes', 'jacket', 'watch', 'accessory']
+                        non_garment_anchors = [
+                            'a person', 'a human name', 'a place', 'a city', 'a brand name',
+                            'a food item', 'an animal', 'a vehicle', 'a document', 'a random word'
+                        ]
                         
-                        # Map detected_item (image category) to allowed text categories
+                        # Map detected_item to allowed garment text categories
                         allowed_map = {
                             "shirt": ["shirt", "t-shirt", "jacket"],
                             "tshirt": ["shirt", "t-shirt", "jacket"],
@@ -219,7 +223,12 @@ async def api_analyze_clothing(
                             "accessory": ["accessory", "watch"]
                         }
                         
-                        texts = [f"a photo of {item_name.strip()}"] + cat_prompts
+                        all_labels = garment_categories + non_garment_anchors
+                        label_prompts = [f"a photo of a {c}" if i < len(garment_categories) else f"a photo of {c}"
+                                         for i, c in enumerate(all_labels)]
+                        name_prompt = f"a photo of {item_name.strip()}"
+                        
+                        texts = [name_prompt] + label_prompts
                         val_inputs = processor(text=texts, return_tensors="pt", padding=True)
                         with torch.no_grad():
                             val_features = model.get_text_features(**val_inputs).pooler_output
@@ -228,22 +237,30 @@ async def api_analyze_clothing(
                         val_features = val_features / val_features.norm(dim=-1, keepdim=True)
                         sims = (val_features[0:1] @ val_features[1:].T)[0].tolist()
                         
-                        # Find the category with the highest semantic similarity
-                        best_idx = sims.index(max(sims))
-                        best_cat = categories[best_idx]
-                        max_sim = sims[best_idx]
+                        garment_sims = sims[:len(garment_categories)]
+                        non_garment_sims = sims[len(garment_categories):]
                         
-                        # Check threshold for gibberish/unrelated names
-                        is_gibberish = max_sim < 0.745
+                        # Find best garment match and best non-garment match
+                        best_garment_idx = garment_sims.index(max(garment_sims))
+                        best_garment_cat = garment_categories[best_garment_idx]
+                        best_garment_sim = garment_sims[best_garment_idx]
+                        best_non_garment_sim = max(non_garment_sims)
                         
-                        # Verify that the best text match aligns with the detected garment type
+                        # A name is valid if:
+                        # 1. Its best garment category matches the detected image type
+                        # 2. The garment match is meaningfully stronger than non-garment anchors
+                        #    (margin > 0.01 means it's more garment-like than person/place/brand)
                         allowed_cats = allowed_map.get(detected_item, [detected_item])
-                        name_is_valid = (not is_gibberish) and (best_cat in allowed_cats)
+                        is_correct_category = best_garment_cat in allowed_cats
+                        is_garment_name = (best_garment_sim - best_non_garment_sim) > 0.005
+                        name_is_valid = is_correct_category and is_garment_name
                         
-                        print(f"[CLIP Name Validation] name='{item_name}', best_match='{best_cat}', similarity={max_sim:.4f}, gibberish={is_gibberish}, allowed_for_{detected_item}={allowed_cats}, valid={name_is_valid}")
+                        print(f"[CLIP Name Validation] name='{item_name}', best_garment='{best_garment_cat}'({best_garment_sim:.4f}), best_non_garment={best_non_garment_sim:.4f}, margin={best_garment_sim-best_non_garment_sim:.4f}, correct_cat={is_correct_category}, is_garment={is_garment_name}, valid={name_is_valid}")
                     except Exception as val_err:
                         print(f"[CLIP Name Validation] Failed, defaulting to valid: {val_err}")
                         name_is_valid = True  # Fail open — never block on AI error
+
+
 
 
                 # Generate CLIP style vector
