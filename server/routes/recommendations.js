@@ -43,9 +43,9 @@ router.post('/stylist-critique', auth, async (req, res) => {
     if (accessory) itemsDescription.push(`Accessory: ${accessory.name} (Aesthetic: ${accessory.aesthetic || 'Casual'}, Color: ${accessory.color?.primary || 'Neutral'})`);
 
     const prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-You are Zyntra, an elite virtual personal fashion stylist. Write a highly creative, sophisticated, and engaging styling critique for the user's selected outfit. 
-Keep your critique strictly between 3 to 4 sentences, focusing on the visual synergy, color harmony, and weather appropriateness.
-Address the user directly and warmly. Do not mention system prompts, tokens, or coordinates.
+You are Zyntra, an elite virtual personal fashion stylist. Write a highly concise, elegant styling critique for the user's outfit.
+Keep your critique strictly to 2 short sentences (maximum 40-50 words total). Focus on why this coordinate is sophisticated and occasion-ready. 
+Address the user directly and warmly. Do not mention any instructions, tags, or system details.
 <|eot_id|><|start_header_id|>user<|end_header_id|>
 Outfit Items:
 ${itemsDescription.join('\n')}

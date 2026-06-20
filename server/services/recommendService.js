@@ -10,6 +10,40 @@ const { colorHarmonyScore, getColorNote } = require('../utils/colorHarmony');
  * 4. Style variety (avoids repeating same items)
  */
 async function generateRecommendations(userId, { occasion = 'casual', season, limit = 5 }) {
+  const checkItemOccasionCompat = (item, occasionId) => {
+    if (!occasionId) return 0;
+    const cleanOccasion = occasionId.toLowerCase().trim();
+    
+    if (item.occasion?.map(o => o.toLowerCase()).includes(cleanOccasion)) {
+      return 0;
+    }
+    
+    if (cleanOccasion === 'formal') {
+      if (item.aesthetic === 'Activewear') return -45;
+      if (item.aesthetic === 'Streetwear') return -25;
+      
+      const lowerName = item.name.toLowerCase();
+      if (lowerName.includes('tshirt') || lowerName.includes('t-shirt') || lowerName.includes('hoodie') || lowerName.includes('sweatpants') || lowerName.includes('jogger') || lowerName.includes('shorts') || lowerName.includes('jersey') || lowerName.includes('activewear')) {
+        return -35;
+      }
+    }
+    
+    if (cleanOccasion === 'sport') {
+      if (item.aesthetic === 'Formal') return -45;
+      
+      const lowerName = item.name.toLowerCase();
+      if (lowerName.includes('blazer') || lowerName.includes('suit') || lowerName.includes('oxford') || lowerName.includes('loafer') || lowerName.includes('trousers') || lowerName.includes('heels')) {
+        return -35;
+      }
+    }
+    
+    if (cleanOccasion === 'party') {
+      if (item.aesthetic === 'Activewear') return -25;
+    }
+    
+    return 0;
+  };
+
   // Fetch user's wardrobe
   const clothes = await Clothing.find({ userId });
 
@@ -45,6 +79,10 @@ async function generateRecommendations(userId, { occasion = 'casual', season, li
         score += 12;
       }
 
+      // Apply compatibility penalty
+      score += checkItemOccasionCompat(top, occasion);
+      score += checkItemOccasionCompat(bottom, occasion);
+
       // 3. Season match
       if (season) {
         const topSeasonMatch = top.season?.includes(season);
@@ -72,11 +110,14 @@ async function generateRecommendations(userId, { occasion = 'casual', season, li
 
       // Pick best matching shoes
       let bestShoe = null;
-      let bestShoeScore = 0;
+      let bestShoeScore = -999;
       for (const shoe of shoes) {
         let shoeScore = colorHarmonyScore(shoe.color?.primary, top.color?.primary) * 0.3 +
           colorHarmonyScore(shoe.color?.primary, bottom.color?.primary) * 0.3;
         if (shoe.occasion?.includes(occasion)) shoeScore += 20;
+        
+        shoeScore += checkItemOccasionCompat(shoe, occasion);
+        
         if (shoeScore > bestShoeScore) {
           bestShoeScore = shoeScore;
           bestShoe = shoe;
@@ -85,25 +126,29 @@ async function generateRecommendations(userId, { occasion = 'casual', season, li
 
       // Pick optional outerwear
       let bestOuterwear = null;
-      if (season === 'winter' || season === 'fall') {
-        let bestOwScore = 0;
-        for (const ow of outerwear) {
-          let owScore = colorHarmonyScore(ow.color?.primary, top.color?.primary) * 0.5;
-          if (ow.season?.includes(season)) owScore += 30;
-          if (owScore > bestOwScore) {
-            bestOwScore = owScore;
-            bestOuterwear = ow;
-          }
+      let bestOwScore = -999;
+      for (const ow of outerwear) {
+        let owScore = colorHarmonyScore(ow.color?.primary, top.color?.primary) * 0.5;
+        if (ow.season?.includes(season)) owScore += 30;
+        
+        owScore += checkItemOccasionCompat(ow, occasion);
+        
+        if (owScore > bestOwScore) {
+          bestOwScore = owScore;
+          bestOuterwear = ow;
         }
       }
 
       // Pick optional accessory
       let bestAccessory = null;
+      let bestAccScore = -999;
       if (accessories.length > 0) {
-        let bestAccScore = 0;
         for (const acc of accessories) {
           let accScore = colorHarmonyScore(acc.color?.primary, top.color?.primary) * 0.5;
           if (acc.occasion?.includes(occasion)) accScore += 20;
+          
+          accScore += checkItemOccasionCompat(acc, occasion);
+          
           if (accScore > bestAccScore) {
             bestAccScore = accScore;
             bestAccessory = acc;
@@ -115,13 +160,13 @@ async function generateRecommendations(userId, { occasion = 'casual', season, li
         top: top,
         bottom: bottom,
       };
-      if (bestShoe) items.shoes = bestShoe;
-      if (bestOuterwear) items.outerwear = bestOuterwear;
-      if (bestAccessory) items.accessory = bestAccessory;
+      if (bestShoe && bestShoeScore > 0) items.shoes = bestShoe;
+      if (bestOuterwear && bestOwScore > 0) items.outerwear = bestOuterwear;
+      if (bestAccessory && bestAccScore > 0) items.accessory = bestAccessory;
 
       outfits.push({
         items,
-        score: Math.min(Math.round(score), 99),
+        score: Math.max(40, Math.min(Math.round(score), 99)),
         reason,
         colorNote: getColorNote(top.color?.primary, bottom.color?.primary),
       });

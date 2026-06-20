@@ -775,6 +775,42 @@ export default function Recommend() {
 
   // Local Outfit Matchmaker Algorithm
   const generateLocalRecommendations = () => {
+    const checkItemOccasionCompat = (item, occasionId) => {
+      if (!occasionId) return 0;
+      const cleanOccasion = occasionId.toLowerCase().trim();
+      
+      // If the item has this occasion tagged, it's perfect!
+      if (item.occasion?.map(o => o.toLowerCase()).includes(cleanOccasion)) {
+        return 0;
+      }
+      
+      // Strict occasion alignment rules to prevent mismatch
+      if (cleanOccasion === 'formal') {
+        if (item.aesthetic === 'Activewear') return -45;
+        if (item.aesthetic === 'Streetwear') return -25;
+        
+        const lowerName = item.name.toLowerCase();
+        if (lowerName.includes('tshirt') || lowerName.includes('t-shirt') || lowerName.includes('hoodie') || lowerName.includes('sweatpants') || lowerName.includes('jogger') || lowerName.includes('shorts') || lowerName.includes('jersey') || lowerName.includes('activewear')) {
+          return -35;
+        }
+      }
+      
+      if (cleanOccasion === 'sport') {
+        if (item.aesthetic === 'Formal') return -45;
+        
+        const lowerName = item.name.toLowerCase();
+        if (lowerName.includes('blazer') || lowerName.includes('suit') || lowerName.includes('oxford') || lowerName.includes('loafer') || lowerName.includes('trousers') || lowerName.includes('heels')) {
+          return -35;
+        }
+      }
+      
+      if (cleanOccasion === 'party') {
+        if (item.aesthetic === 'Activewear') return -25;
+      }
+      
+      return 0;
+    };
+
     const checkOccasionMatch = (item, occasionId, customText) => {
       if (!customText) return item.occasion?.includes(occasionId);
       const query = customText.toLowerCase().trim();
@@ -797,7 +833,6 @@ export default function Recommend() {
       return [];
     }
 
-    // const currentTemp = simulatedWeather ? WEATHER_MOCK[simulatedWeather].temp : weather.temp;
     const currentTemp = weather.temp; // Rely strictly on real-time weather
     const isColdWeather = currentTemp < 15;
 
@@ -819,7 +854,7 @@ export default function Recommend() {
         } else {
           if ((top.aesthetic === 'Formal' && bottom.aesthetic === 'Activewear') ||
             (top.aesthetic === 'Activewear' && bottom.aesthetic === 'Formal')) {
-            score -= 10;
+            score -= 15;
           } else {
             score += 8;
           }
@@ -847,6 +882,11 @@ export default function Recommend() {
           }
         }
 
+        // Apply strict occasion compatibility penalty
+        const topCompatPenalty = checkItemOccasionCompat(top, params.occasion);
+        const bottomCompatPenalty = checkItemOccasionCompat(bottom, params.occasion);
+        score += topCompatPenalty + bottomCompatPenalty;
+
         // 4. Weather Season Match
         let activeSeason = '';
         if (currentTemp < 10) activeSeason = 'winter';
@@ -867,12 +907,15 @@ export default function Recommend() {
 
         // Pick best matching shoes
         let bestShoe = null;
-        let bestShoeScore = 0;
+        let bestShoeScore = -999;
         for (const shoe of shoes) {
           let shoeScore = colorHarmonyScore(shoe.color?.primary, top.color?.primary) * 0.3 +
             colorHarmonyScore(shoe.color?.primary, bottom.color?.primary) * 0.3;
           if (shoe.occasion?.includes(params.occasion)) shoeScore += 20;
           if (shoe.aesthetic === top.aesthetic) shoeScore += 10;
+          
+          shoeScore += checkItemOccasionCompat(shoe, params.occasion);
+          
           if (shoeScore > bestShoeScore) {
             bestShoeScore = shoeScore;
             bestShoe = shoe;
@@ -881,7 +924,7 @@ export default function Recommend() {
 
         // Pick optional outerwear
         let bestOuterwear = null;
-        let bestOwScore = 0;
+        let bestOwScore = -999;
 
         for (const ow of outerwear) {
           let owScore = colorHarmonyScore(ow.color?.primary, top.color?.primary) * 0.4 +
@@ -889,6 +932,8 @@ export default function Recommend() {
 
           if (ow.season?.includes(finalSeason)) owScore += 25;
           if (ow.aesthetic === top.aesthetic) owScore += 15;
+          
+          owScore += checkItemOccasionCompat(ow, params.occasion);
 
           if (owScore > bestOwScore) {
             bestOwScore = owScore;
@@ -898,21 +943,24 @@ export default function Recommend() {
 
         // If it's cold, require or highly boost if we found outerwear
         if (isColdWeather) {
-          if (bestOuterwear) {
+          if (bestOuterwear && bestOwScore > 0) {
             score += 20;
             reasons.push('weather layering active');
           } else {
-            score -= 15; // penalty for lack of protection
+            score -= 15;
           }
         }
 
         // Pick optional accessory
         let bestAccessory = null;
-        let bestAccScore = 0;
+        let bestAccScore = -999;
         for (const acc of accessories) {
           let accScore = colorHarmonyScore(acc.color?.primary, top.color?.primary) * 0.5;
           if (acc.occasion?.includes(params.occasion)) accScore += 20;
           if (acc.aesthetic === top.aesthetic) accScore += 10;
+          
+          accScore += checkItemOccasionCompat(acc, params.occasion);
+          
           if (accScore > bestAccScore) {
             bestAccScore = accScore;
             bestAccessory = acc;
@@ -931,9 +979,9 @@ export default function Recommend() {
         else if (reasons.length > 0) mainReason = reasons[0];
 
         const items = { top, bottom };
-        if (bestShoe) items.shoes = bestShoe;
+        if (bestShoe && bestShoeScore > 0) items.shoes = bestShoe;
         if (bestOuterwear && (isColdWeather || bestOwScore > 40)) items.outerwear = bestOuterwear;
-        if (bestAccessory) items.accessory = bestAccessory;
+        if (bestAccessory && bestAccScore > 0) items.accessory = bestAccessory;
 
         outfits.push({
           items,
@@ -963,94 +1011,23 @@ export default function Recommend() {
   const generateAIAdviceText = (topOutfit) => {
     if (!topOutfit) return '';
 
-    const currentTemp = weather.temp; // Rely strictly on real-time weather
-    const currentCondition = weather.condition;
     const { top, bottom, outerwear, shoes, accessory } = topOutfit.items;
-
-    // 1. Core Occasion Setup
     const occasionTitle = customOccasion || (params.occasion.charAt(0).toUpperCase() + params.occasion.slice(1));
-    const occasionNouns = {
-      casual: 'relaxed cafe hangout with friends',
-      formal: 'professional corporate or formal meeting',
-      sport: 'high-energy workout or active training session',
-      party: 'vibrant night out or festive celebration'
-    };
-    const occasionNoun = customOccasion ? `outing to "${customOccasion}"` : (occasionNouns[params.occasion] || 'special outing');
-
-    // 2. Weather Specific Commentary
-    let weatherAdvice = '';
-    if (currentTemp < 10) {
-      weatherAdvice = `❄️ Cold winter conditions detected (${currentTemp}°C) in ${locationName}. Heavy thermal protection is highly optimized. `;
-      if (outerwear) {
-        weatherAdvice += `The ${outerwear.fit} ${outerwear.name} acts as your primary thermal shield, styled beautifully over the ${top.name}. `;
-      } else {
-        weatherAdvice += `Please bundle up! Your digital wardrobe is currently missing a warm coat or jacket—consider scanning one soon to complete cold-weather layering guidelines. `;
-      }
-    } else if (currentTemp >= 10 && currentTemp < 17) {
-      weatherAdvice = `🍂 A brisk, chilly atmosphere (${currentTemp}°C) in ${locationName}. `;
-      if (outerwear) {
-        weatherAdvice += `I suggest wearing your ${outerwear.name} styled open to create a crisp, modern multi-layered silhouette with your ${top.name}. `;
-      } else {
-        weatherAdvice += `A cozy sweater or light jacket over your ${top.name} is recommended for optimal comfort. `;
-      }
-    } else if (currentTemp >= 17 && currentTemp < 24) {
-      weatherAdvice = `⛅ A pleasant, temperate climate (${currentTemp}°C). Perfect for light styling. The ${top.name} provides clean, comfortable insulation without overheating. `;
-    } else {
-      weatherAdvice = `☀️ Warm, high-temperature conditions (${currentTemp}°C). Optimizing for maximum breathability. The lightweight structure of the ${top.name} keeps you cool and collected under the sun. `;
-    }
-
-    if (currentCondition.includes('🌧️') || currentCondition.includes('Rainy') || currentCondition.includes('Showers')) {
-      weatherAdvice += `🌧️ Rain protection protocol is active: ensure your layers are water-resistant to keep the silhouette clean and dry. `;
-    } else if (currentCondition.includes('💨') || currentCondition.includes('Windy') || currentCondition.includes('Gale')) {
-      weatherAdvice += `💨 Gale-defense active: the outer layer acts as an effective windbreak to seal in warmth. `;
-    }
-
-    // 3. Dynamic Styling Angle / Synergy
-    const topStyle = top.aesthetic || 'Casual';
-    const bottomStyle = bottom.aesthetic || 'Casual';
-    let styleSynergy = `For your ${occasionNoun}, pairing your ${top.name} with the ${bottom.name} is a highly deliberate styling coordinate. `;
-
-    if (topStyle === bottomStyle) {
-      styleSynergy += `This creates a highly unified, cohesive ${topStyle} silhouette. The ${top.fit} cut of the top establishes a beautiful aesthetic flow with the ${bottom.fit} drape of the bottom. `;
-    } else {
-      styleSynergy += `This establishes a balanced, high-low styling aesthetic that blends the ${topStyle} character of the top with the ${bottomStyle} outline of the bottom. The ${top.fit} shape of the top contrasts appealingly with the ${bottom.fit} design of the bottom, projecting absolute fashion confidence. `;
-    }
-
-    styleSynergy += `Having a ${top.pattern} pattern matched with a ${bottom.pattern} structure keeps the visual detail focused and beautifully balanced.`;
-
-    // 4. Color Theory Psychology
-    let colorPsychology = '';
     const colorNote = topOutfit.colorNote;
-    colorPsychology = `The combination of the ${top.color?.primary || 'neutral'} top and the ${bottom.color?.primary || 'neutral'} bottom establishes a beautiful visual balance. Under the ${currentCondition} in ${locationName}, this ${colorNote.toLowerCase()} projects an elegant, highly customized aesthetic statement.`;
 
-    // 5. Finishing details (Shoes & Accessories)
-    let details = '';
-    if (shoes) {
-      details += `For footwear, sliding into the ${shoes.name} anchors the outfit beautifully. `;
-      if (shoes.aesthetic === topStyle) {
-        details += `Its ${shoes.aesthetic} styling reinforces the core aesthetic. `;
-      }
+    let text = `For your ${occasionTitle} outing in ${locationName}, pairing the ${top.name} with the ${bottom.name} creates an elegant, visually balanced ${top.aesthetic.toLowerCase()} silhouette (${colorNote.toLowerCase()}). `;
+    
+    if (outerwear || shoes || accessory) {
+      const details = [];
+      if (outerwear) details.push(`layering with the ${outerwear.name}`);
+      if (shoes) details.push(`anchoring with the ${shoes.name}`);
+      if (accessory) details.push(`finishing with the ${accessory.name}`);
+      text += `Completing this coordinate by ${details.join(', and ')} is highly optimized for the current ${weather.temp}°C ${weather.condition.toLowerCase()} conditions.`;
+    } else {
+      text += `This coordinate is highly optimized for the current ${weather.temp}°C ${weather.condition.toLowerCase()} conditions.`;
     }
-    if (accessory) {
-      details += `Finish off with the ${accessory.name} for an elegant, highly customized accessory accent.`;
-    }
 
-    // Combine into a master generative-styled personal review
-    return `Hello there! I am your Zyntra AI Stylist. For your ${occasionTitle} outing today in your local region (${locationName}), I have formulated a premium, mathematically optimized style recommendation from your digital wardrobe.
-
-✨ STYLING ANGLE:
-${styleSynergy}
-
-🌡️ WEATHER ADAPTATION:
-${weatherAdvice}
-
-🎨 COLOR PSYCHOLOGY & HARMONY:
-${colorPsychology}
-
-👟 ACCESSORY & FINISHING DETAILS:
-${details}
-
-This combination scores a remarkable ${topOutfit.score}% Style Match based on color theory, occasion eligibility, and seasonal guidelines. Step out with absolute confidence!`;
+    return text;
   };
 
   // Load weather, customized avatar and fit adjustments from localStorage
