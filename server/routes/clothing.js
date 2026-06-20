@@ -41,40 +41,8 @@ const upload = multer({
   },
 });
 
-// POST /api/clothing/detect — Fast AI garment type detection (no BG removal, ~300ms)
-// Called immediately on image select to show "Looks like a Shirt" suggestion in the UI.
-const uploadDetect = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-router.post('/detect', auth, uploadDetect.single('image'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'Image is required' });
-
-    const formData = new FormData();
-    formData.append('image', req.file.buffer, {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype
-    });
-
-    const aiResponse = await fetch('http://localhost:8000/detect-type', {
-      method: 'POST',
-      body: formData,
-      headers: formData.getHeaders(),
-      timeout: 10000
-    });
-
-    if (aiResponse.ok) {
-      const data = await aiResponse.json();
-      return res.json(data);
-    }
-    return res.status(500).json({ detectedType: null });
-  } catch (err) {
-    console.warn('[detect] AI offline:', err.message);
-    return res.json({ detectedType: null }); // Fail silently — suggestion is optional
-  }
-});
-
 // POST /api/clothing — Upload new clothing item
 router.post('/', auth, upload.single('image'), async (req, res) => {
-
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Image is required' });
