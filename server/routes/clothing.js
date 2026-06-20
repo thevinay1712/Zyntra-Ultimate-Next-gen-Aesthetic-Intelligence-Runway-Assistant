@@ -64,128 +64,27 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     let fileBuffer = fs.readFileSync(req.file.path);
     const originalMime = req.file.mimetype;
 
-    // Calculate hash of the ORIGINAL uploaded image to check for duplicates
+    // ── Parallel duplicate checks (hash + name) ──────────────────────────────
     const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
-    console.log(`[UPLOAD] User ID: ${req.userId} (type: ${typeof req.userId}), File Hash: ${fileHash}`);
+    console.log(`[UPLOAD] User ID: ${req.userId}, File Hash: ${fileHash}`);
 
-    // 1. Check if the exact same image has already been uploaded by the user
-    const existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash });
-    console.log(`[UPLOAD] Duplicate query result:`, existingHash ? { id: existingHash._id, name: existingHash.name, hash: existingHash.imageHash } : 'None found');
+    const [existingHash, existingName] = await Promise.all([
+      Clothing.findOne({ userId: req.userId, imageHash: fileHash }),
+      Clothing.findOne({ userId: req.userId, name })
+    ]);
+
     if (existingHash) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: 'You have already uploaded this exact image.' });
     }
-
-    // 2. Check if an item with the same name already exists in user's wardrobe
-    const existingName = await Clothing.findOne({ userId: req.userId, name: name });
     if (existingName) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: 'An item with this name already exists in your wardrobe.' });
     }
 
-    let bgRemoved = false;
-    let transparentBuffer = null;
-
-    // --- HUGGING FACE: AI BACKGROUND REMOVAL (Option 1) ---
-    if (process.env.HF_API_TOKEN) {
-      try {
-        console.log('🤖 Querying Hugging Face RMBG-1.4 model for background isolation...');
-        const hfResponse = await fetch('https://api-inference.huggingface.co/models/briaai/RMBG-1.4', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.HF_API_TOKEN}`,
-            'Content-Type': originalMime
-          },
-          body: fileBuffer,
-          timeout: 15000 // 15-second timeout
-        });
-
-        if (hfResponse.ok) {
-          transparentBuffer = await hfResponse.buffer();
-          bgRemoved = true;
-          console.log('✅ Background isolated successfully via Hugging Face RMBG-1.4!');
-        } else {
-          const errorText = await hfResponse.text();
-          console.warn(`Hugging Face API background removal failed (status ${hfResponse.status}): ${errorText}`);
-        }
-      } catch (err) {
-        console.warn('Failed to call Hugging Face background removal API:', err.message);
-      }
-    } else {
-      console.warn('HF_API_TOKEN is not defined in .env. Skipping Hugging Face background removal.');
-    }
-
-    // --- FALLBACK: LOCAL PYTHON AI SERVICE BACKGROUND REMOVAL ---
-    if (!bgRemoved) {
-      try {
-        console.log('🔌 Falling back to local Python AI service for background removal...');
-        const localFormData = new FormData();
-        localFormData.append('file', fileBuffer, {
-          filename: req.file.filename,
-          contentType: originalMime
-        });
-
-        const localResponse = await fetch('http://localhost:8000/remove-bg', {
-          method: 'POST',
-          body: localFormData,
-          headers: localFormData.getHeaders(),
-          timeout: 25000 // 25-second timeout
-        });
-
-        if (localResponse.ok) {
-          transparentBuffer = await localResponse.buffer();
-          bgRemoved = true;
-          console.log('✅ Background isolated successfully via local Python AI service!');
-        } else {
-          const localErrorText = await localResponse.text();
-          console.warn(`Local AI service background removal failed (status ${localResponse.status}): ${localErrorText}`);
-        }
-      } catch (err) {
-        console.warn('Failed to call local Python AI background removal service:', err.message);
-      }
-    }
-
-    // If background was removed successfully, save the transparent PNG and update file details
-    if (bgRemoved && transparentBuffer) {
-      // Calculate hash of the transparent/isolated PNG to check against legacy DB entries
-      const transparentHash = crypto.createHash('sha256').update(transparentBuffer).digest('hex');
-      console.log(`[UPLOAD] Isolated Hash: ${transparentHash}`);
-
-      const existingTransparent = await Clothing.findOne({ userId: req.userId, imageHash: transparentHash });
-      console.log(`[UPLOAD] Legacy/isolated duplicate query result:`, existingTransparent ? { id: existingTransparent._id, name: existingTransparent.name } : 'None found');
-      if (existingTransparent) {
-        if (req.file) {
-          fs.unlinkSync(req.file.path);
-        }
-        return res.status(400).json({ message: 'You have already uploaded this exact image.' });
-      }
-
-      // Generate new unique name with .png extension
-      const baseName = path.basename(req.file.filename, path.extname(req.file.filename));
-      const newFilename = `${baseName}-transparent.png`;
-      const newPath = path.join(path.dirname(req.file.path), newFilename);
-      
-      // Write the isolated PNG to disk
-      fs.writeFileSync(newPath, transparentBuffer);
-      
-      // Delete original uploaded file
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.warn('Failed to delete original file temp path:', err.message);
-      }
-      
-      // Update req.file details
-      req.file.path = newPath;
-      req.file.filename = newFilename;
-      req.file.mimetype = 'image/png';
-    }
-
-    // --- CLOSET AI: FORWARD IMAGE FOR QUALITY & FASHION UNDERSTANDING ---
+    // ── Single AI call: BG removal + analysis in one pass ────────────────────
+    // /process-upload returns the transparent PNG as base64 AND all analysis
+    // results in one JSON response — eliminates the old double rembg overhead.
     let aiQuality = 'Good';
     let aiQualityDetails = 'Excellent quality';
     let aiColor = null;
@@ -194,38 +93,44 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     let aiFit = 'Regular';
     let aiStyleVector = [];
     let detectedItemType = null;
-    let nameIsValid = true; // Default true; set to false by CLIP if name doesn't match image
+    let nameIsValid = true;
+    let transparentBuffer = null;
 
     try {
-      console.log('🧠 Querying Zyntra Closet AI service...');
+      console.log('🧠 Querying Zyntra AI (unified process-upload)...');
       const formData = new FormData();
-      formData.append('image', fs.createReadStream(req.file.path));
+      formData.append('image', fileBuffer, {
+        filename: req.file.filename,
+        contentType: originalMime
+      });
       formData.append('category', category || 'tops');
-      formData.append('item_name', name || '');  // Send name for CLIP semantic validation
+      formData.append('item_name', name || '');
 
-      const aiResponse = await fetch('http://localhost:8000/analyze-clothing', {
+      const aiResponse = await fetch('http://localhost:8000/process-upload', {
         method: 'POST',
         body: formData,
         headers: formData.getHeaders(),
-        timeout: 45000 // 45-second timeout — CLIP needs time to load model + run 2 inferences
+        timeout: 45000
       });
 
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
-        aiQuality = aiData.quality;
+        aiQuality        = aiData.quality;
         aiQualityDetails = aiData.qualityDetails;
-        aiColor = aiData.color;
-        aiPattern = aiData.pattern;
-        aiAesthetic = aiData.aesthetic;
-        aiFit = aiData.fit;
-        aiStyleVector = aiData.styleVector || [];
+        aiColor          = aiData.color;
+        aiPattern        = aiData.pattern;
+        aiAesthetic      = aiData.aesthetic;
+        aiFit            = aiData.fit;
+        aiStyleVector    = aiData.styleVector || [];
         detectedItemType = aiData.detectedItemType;
-        // CLIP-based name validation result (true = name matches image semantically)
-        if (aiData.nameIsValid === false) {
-          nameIsValid = false;
+        if (aiData.nameIsValid === false) nameIsValid = false;
+
+        // Decode the transparent PNG from base64
+        if (aiData.transparentImageB64) {
+          transparentBuffer = Buffer.from(aiData.transparentImageB64, 'base64');
         }
 
-        console.log(`✅ Zyntra Closet AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}, VectorLength=${aiStyleVector.length}, DetectedType=${detectedItemType}, NameIsValid=${nameIsValid}`);
+        console.log(`✅ AI result: Quality=${aiQuality}, Aesthetic=${aiAesthetic}, Pattern=${aiPattern}, DetectedType=${detectedItemType}, NameIsValid=${nameIsValid}`);
       } else {
         console.warn('AI Service returned non-ok status:', aiResponse.status);
       }
@@ -233,11 +138,9 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       console.warn('AI Service offline or failed. Graceful fallback active:', err.message);
     }
 
-    // If quality is Bad, reject the upload and delete the file!
+    // ── Quality gate ─────────────────────────────────────────────────────────
     if (aiQuality === 'Bad') {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({
         message: `AI Upload Rejection: ${aiQualityDetails}`,
         quality: 'Bad',
@@ -245,13 +148,10 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       });
     }
 
-    // 3. Garment name validation — fully AI-driven via CLIP semantic similarity (no hardcoded keywords)
-    // The AI service compares the image against "a photo of [user's name]" and returns nameIsValid.
+    // ── Name validation gate ──────────────────────────────────────────────────
     if (!nameIsValid) {
-      console.warn(`[UPLOAD REJECTION] CLIP rejected name "${name}" for detected garment "${detectedItemType}" — semantically mismatched.`);
-      if (req.file) {
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
-      }
+      console.warn(`[UPLOAD REJECTION] CLIP rejected name "${name}" for detected garment "${detectedItemType}"`);
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
       return res.status(400).json({
         message: 'Garment mismatch',
         detectedType: detectedItemType,
@@ -259,8 +159,27 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       });
     }
 
+    // ── Save transparent PNG if received ─────────────────────────────────────
+    if (transparentBuffer) {
+      // Check isolated-image duplicate
+      const transparentHash = crypto.createHash('sha256').update(transparentBuffer).digest('hex');
+      const existingTransparent = await Clothing.findOne({ userId: req.userId, imageHash: transparentHash });
+      if (existingTransparent) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(400).json({ message: 'You have already uploaded this exact image.' });
+      }
 
-    // Extract colors (use AI colors if available, otherwise run local fallback)
+      const baseName = path.basename(req.file.filename, path.extname(req.file.filename));
+      const newFilename = `${baseName}-transparent.png`;
+      const newPath = path.join(path.dirname(req.file.path), newFilename);
+      fs.writeFileSync(newPath, transparentBuffer);
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      req.file.path     = newPath;
+      req.file.filename = newFilename;
+      req.file.mimetype = 'image/png';
+    }
+
+    // ── Color fallback ────────────────────────────────────────────────────────
     let colorData = { primary: '#888888', secondary: '', palette: [] };
     if (aiColor) {
       colorData = aiColor;

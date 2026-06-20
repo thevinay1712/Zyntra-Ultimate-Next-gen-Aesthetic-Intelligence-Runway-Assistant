@@ -301,6 +301,172 @@ async def api_analyze_clothing(
         raise HTTPException(status_code=500, detail=f"AI Service processing error: {str(e)}")
 
 
+@app.post("/process-upload")
+async def api_process_upload(
+    image: UploadFile = File(...),
+    category: str = Form("tops"),
+    item_name: str = Form("")
+):
+    """
+    FAST unified upload endpoint — background removal + full analysis in ONE pass.
+    Returns JSON with:
+      - transparent_image_b64: base64-encoded PNG with background removed
+      - quality, qualityDetails, color, pattern, aesthetic, fit, styleVector,
+        detectedItemType, nameIsValid
+    Replaces the separate /remove-bg + /analyze-clothing round-trips.
+    """
+    import base64
+    try:
+        contents = await image.read()
+
+        # ── Step 1: Segment garment (single rembg pass) ───────────────────────
+        try:
+            segmented_bytes, cv2_img_bgra, alpha_mask = segment_garment(contents)
+            img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
+        except Exception as e:
+            segmented_bytes = contents
+            nparr = np.frombuffer(contents, np.uint8)
+            img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            alpha_mask = np.ones(img_bgr.shape[:2], dtype=np.uint8) * 255
+            img_bgr_isolated = img_bgr
+            print(f"[process-upload] rembg fallback: {e}")
+
+        transparent_b64 = base64.b64encode(segmented_bytes).decode("utf-8")
+
+        # ── Step 2: Quality check ─────────────────────────────────────────────
+        quality, quality_details = analyze_upload_quality(img_bgr_isolated, alpha_mask)
+
+        dominant_colors = ["#888888", "#bbbbbb", "#dddddd"]
+        primary_color = "#888888"
+        pattern = "Solid"
+        aesthetic = "Casual"
+        fit = "Regular"
+        style_vector = []
+        detected_item = "item"
+        name_is_valid = True
+
+        if quality != "Bad":
+            # ── Step 3: Color / pattern / aesthetic ───────────────────────────
+            dominant_colors, primary_color = extract_color_palette(img_bgr_isolated, alpha_mask)
+            pattern = classify_garment_pattern(img_bgr_isolated, alpha_mask)
+            aesthetic, fit = determine_aesthetic(category, primary_color, pattern)
+
+            # ── Step 4: CLIP classification + name validation ─────────────────
+            try:
+                model, processor = clip_wrapper.load()
+                pil_img = Image.open(io.BytesIO(segmented_bytes)).convert("RGB")
+
+                labels_map = {
+                    "shirt":     ["a photo of a button-down shirt", "a photo of a blouse", "a photo of a sweater", "a photo of a top"],
+                    "tshirt":    ["a photo of a t-shirt", "a photo of a tee shirt"],
+                    "pant":      ["a photo of pants", "a photo of trousers", "a photo of jeans", "a photo of sweatpants"],
+                    "shorts":    ["a photo of shorts"],
+                    "skirt":     ["a photo of a skirt"],
+                    "shoe":      ["a photo of shoes", "a photo of sneakers", "a photo of boots", "a photo of footwear"],
+                    "jacket":    ["a photo of a jacket", "a photo of a coat", "a photo of a blazer", "a photo of outerwear"],
+                    "watch":     ["a photo of a wristwatch", "a photo of a watch"],
+                    "accessory": ["a photo of a belt", "a photo of sunglasses", "a photo of a hat", "a photo of a bag"]
+                }
+
+                flat_texts = []
+                text_to_cat = {}
+                for cat, texts in labels_map.items():
+                    for text in texts:
+                        flat_texts.append(text)
+                        text_to_cat[text] = cat
+
+                # Single CLIP forward pass: image vs. all labels + get image features
+                inputs = processor(text=flat_texts, images=pil_img, return_tensors="pt", padding=True)
+                with torch.no_grad():
+                    outputs = model(**inputs)
+                    logits_per_image = outputs.logits_per_image
+                    probs = logits_per_image.softmax(dim=1)
+                    best_idx = probs.argmax().item()
+                    best_text = flat_texts[best_idx]
+                    detected_item = text_to_cat[best_text]
+                    # Reuse image features from the same forward pass
+                    image_features = outputs.image_embeds
+                    features_tensor = image_features[0]
+                    norm = torch.linalg.norm(features_tensor)
+                    normalized_tensor = features_tensor / norm if norm > 0 else features_tensor
+                    style_vector = normalized_tensor.tolist()
+
+                print(f"[CLIP Classify] best_text='{best_text}' => detected_item='{detected_item}'")
+
+                # ── Name validation ────────────────────────────────────────────
+                if item_name.strip() and detected_item != "item":
+                    try:
+                        garment_categories = ['shirt', 't-shirt', 'pants', 'shorts', 'skirt', 'shoes', 'jacket', 'watch', 'accessory']
+                        non_garment_anchors = [
+                            'a person', 'a human name', 'a place', 'a city', 'a brand name',
+                            'a food item', 'an animal', 'a vehicle', 'a document', 'a random word'
+                        ]
+                        allowed_map = {
+                            "shirt":     ["shirt", "t-shirt", "jacket"],
+                            "tshirt":    ["shirt", "t-shirt", "jacket"],
+                            "jacket":    ["shirt", "t-shirt", "jacket"],
+                            "pant":      ["pants", "shorts", "skirt"],
+                            "shorts":    ["pants", "shorts", "skirt"],
+                            "skirt":     ["pants", "shorts", "skirt"],
+                            "shoe":      ["shoes"],
+                            "watch":     ["watch", "accessory"],
+                            "accessory": ["accessory", "watch"]
+                        }
+                        all_labels = garment_categories + non_garment_anchors
+                        label_prompts = [f"a photo of a {c}" if i < len(garment_categories) else f"a photo of {c}"
+                                         for i, c in enumerate(all_labels)]
+                        texts_v = [f"a photo of {item_name.strip()}"] + label_prompts
+                        val_inputs = processor(text=texts_v, return_tensors="pt", padding=True)
+                        with torch.no_grad():
+                            val_features = model.get_text_features(**val_inputs).pooler_output
+                        val_features = val_features / val_features.norm(dim=-1, keepdim=True)
+                        sims = (val_features[0:1] @ val_features[1:].T)[0].tolist()
+                        garment_sims = sims[:len(garment_categories)]
+                        non_garment_sims = sims[len(garment_categories):]
+                        best_garment_idx = garment_sims.index(max(garment_sims))
+                        best_garment_cat = garment_categories[best_garment_idx]
+                        best_garment_sim = garment_sims[best_garment_idx]
+                        best_non_garment_sim = max(non_garment_sims)
+                        allowed_cats = allowed_map.get(detected_item, [detected_item])
+                        is_correct_category = best_garment_cat in allowed_cats
+                        is_garment_name = (best_garment_sim - best_non_garment_sim) > 0.005
+                        name_is_valid = is_correct_category and is_garment_name
+                        print(f"[CLIP Name Validation] name='{item_name}', best_garment='{best_garment_cat}'({best_garment_sim:.4f}), best_non_garment={best_non_garment_sim:.4f}, margin={best_garment_sim-best_non_garment_sim:.4f}, valid={name_is_valid}")
+                    except Exception as val_err:
+                        print(f"[CLIP Name Validation] Failed, defaulting to valid: {val_err}")
+                        name_is_valid = True
+
+            except Exception as clip_err:
+                print(f"[process-upload] CLIP failed, fallback active: {clip_err}")
+                style_vector = []
+                detected_item = "item"
+                name_is_valid = True
+
+        return JSONResponse(content={
+            "success": True,
+            "transparentImageB64": transparent_b64,
+            "quality": quality,
+            "qualityDetails": quality_details,
+            "color": {
+                "primary": primary_color,
+                "secondary": dominant_colors[1] if len(dominant_colors) > 1 else "",
+                "palette": dominant_colors
+            },
+            "pattern": pattern,
+            "aesthetic": aesthetic,
+            "fit": fit,
+            "styleVector": style_vector,
+            "detectedItemType": detected_item,
+            "nameIsValid": name_is_valid
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[process-upload] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload processing error: {str(e)}")
+
+
 @app.post("/virtual-tryon")
 async def api_virtual_tryon(
     image: UploadFile = File(...),
