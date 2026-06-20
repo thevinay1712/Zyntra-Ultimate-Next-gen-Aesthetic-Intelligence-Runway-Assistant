@@ -68,6 +68,29 @@ class CLIPModelWrapper:
 
 clip_wrapper = CLIPModelWrapper()
 
+@app.on_event("startup")
+def startup_event():
+    import threading
+    
+    def preload_models():
+        print("[Startup] Pre-loading CLIP model in background...")
+        try:
+            clip_wrapper.load()
+            print("[Startup] CLIP model pre-loaded successfully in background!")
+        except Exception as e:
+            print(f"[Startup] Failed to pre-load CLIP model: {e}")
+            
+        print("[Startup] Pre-loading rembg session in background (downloads u2net model if missing)...")
+        try:
+            from rembg import new_session
+            new_session()
+            print("[Startup] rembg session pre-loaded successfully in background!")
+        except Exception as e:
+            print(f"[Startup] Failed to pre-load rembg session: {e}")
+            
+    # Start pre-loading in a background thread to prevent blocking server readiness
+    threading.Thread(target=preload_models, daemon=True).start()
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "Zyntra Closet AI"}
