@@ -267,6 +267,8 @@ export default function Upload() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [nameValidationError, setNameValidationError] = useState(null);
+  const [aiSuggestion, setAiSuggestion] = useState(null); // { label, detectedType }
+  const [detectingType, setDetectingType] = useState(false);
   // Trigger background removal on original image changes
   /* Comment out frontend local background removal process to eliminate UI lag
   useEffect(() => {
@@ -303,7 +305,7 @@ export default function Upload() {
 
 
 
-  const handleFile = (selectedFile) => {
+  const handleFile = async (selectedFile) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
       // Clear previous resources
       if (originalUrl) URL.revokeObjectURL(originalUrl);
@@ -312,12 +314,26 @@ export default function Upload() {
       setOriginalFile(selectedFile);
       const url = URL.createObjectURL(selectedFile);
       setOriginalUrl(url);
-      setKeyColor(null); // Reset target color for auto-detection
+      setKeyColor(null);
       setBgRemovedBlob(null);
       setBgRemovedUrl(null);
       setSamplingMode(false);
       setIsBgRemovalImperfect(false);
       setNameValidationError(null);
+      setAiSuggestion(null);
+
+      // ── Fire AI type detection in background for name suggestion ──
+      setDetectingType(true);
+      try {
+        const fd = new FormData();
+        fd.append('image', selectedFile);
+        const { data } = await clothingAPI.detectType(fd);
+        if (data?.label) setAiSuggestion(data);
+      } catch (_) {
+        // Fail silently — suggestion is optional
+      } finally {
+        setDetectingType(false);
+      }
     } else {
       error('Please select a valid image file');
     }
@@ -432,6 +448,7 @@ export default function Upload() {
     setKeyColor(null);
     setSamplingMode(false);
     setIsBgRemovalImperfect(false);
+    setAiSuggestion(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -658,8 +675,38 @@ export default function Upload() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', paddingRight: aiSuggestion ? '160px' : '14px' }}
                 />
+
+                {/* AI garment type suggestion pill — appears inside input on right */}
+                {detectingType && (
+                  <div className="ai-suggest-pill ai-suggest-scanning">
+                    <span className="ai-suggest-dot" />
+                    <span>Scanning…</span>
+                  </div>
+                )}
+                {!detectingType && aiSuggestion && !formData.name && (
+                  <button
+                    type="button"
+                    className="ai-suggest-pill ai-suggest-clickable"
+                    title={`Click to use '${aiSuggestion.label}' as item name`}
+                    onClick={() => {
+                      // Map detected type to a category and auto-select it
+                      const typeToCategory = {
+                        shirt: 'tops', tshirt: 'tops', jacket: 'outerwear',
+                        pant: 'bottoms', shorts: 'bottoms', skirt: 'bottoms',
+                        shoe: 'shoes', watch: 'accessories', accessory: 'accessories'
+                      };
+                      const cat = typeToCategory[aiSuggestion.detectedType] || formData.category;
+                      setFormData(prev => ({ ...prev, name: aiSuggestion.label, category: cat }));
+                      setAiSuggestion(null);
+                    }}
+                  >
+                    <span className="ai-suggest-icon">✦</span>
+                    <span>Looks like <strong>{aiSuggestion.label}</strong></span>
+                  </button>
+                )}
+
                 {nameValidationError && (
                   <div className="name-validation-popup animate-fade-in">
                     <span className="popup-arrow" />

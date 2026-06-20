@@ -41,6 +41,10 @@ export const clothingAPI = {
     api.post('/clothing', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  detectType: (formData) =>
+    api.post('/clothing/detect', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   getAll: (params) => api.get('/clothing', { params }),
   getOne: (id) => api.get(`/clothing/${id}`),
   update: (id, data) => api.put(`/clothing/${id}`, data),

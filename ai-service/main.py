@@ -95,6 +95,69 @@ def startup_event():
 def health_check():
     return {"status": "ok", "service": "Zyntra Closet AI"}
 
+@app.post("/detect-type")
+async def api_detect_type(file: UploadFile = File(...)):
+    """
+    Fast garment type detection — CLIP only, NO background removal.
+    Called immediately on image select to give the user a "Looks like a Shirt" hint.
+    Typical latency: ~200-400ms once CLIP is loaded.
+    """
+    try:
+        contents = await file.read()
+        model, processor = clip_wrapper.load()
+
+        # Decode image — fall back gracefully if invalid
+        nparr = np.frombuffer(contents, np.uint8)
+        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            return JSONResponse(content={"detectedType": None, "label": None})
+
+        pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
+
+        labels_map = {
+            "shirt":     ["a photo of a button-down shirt", "a photo of a blouse", "a photo of a sweater", "a photo of a top"],
+            "tshirt":    ["a photo of a t-shirt", "a photo of a tee shirt"],
+            "pant":      ["a photo of pants", "a photo of trousers", "a photo of jeans", "a photo of sweatpants"],
+            "shorts":    ["a photo of shorts"],
+            "skirt":     ["a photo of a skirt"],
+            "shoe":      ["a photo of shoes", "a photo of sneakers", "a photo of boots", "a photo of footwear"],
+            "jacket":    ["a photo of a jacket", "a photo of a coat", "a photo of a blazer", "a photo of outerwear"],
+            "watch":     ["a photo of a wristwatch", "a photo of a watch"],
+            "accessory": ["a photo of a belt", "a photo of sunglasses", "a photo of a hat", "a photo of a bag"]
+        }
+        # Human-readable display labels for the UI suggestion chip
+        display_labels = {
+            "shirt": "Shirt", "tshirt": "T-Shirt", "pant": "Pants",
+            "shorts": "Shorts", "skirt": "Skirt", "shoe": "Shoes",
+            "jacket": "Jacket", "watch": "Watch", "accessory": "Accessory"
+        }
+
+        flat_texts = []
+        text_to_cat = {}
+        for cat, texts in labels_map.items():
+            for text in texts:
+                flat_texts.append(text)
+                text_to_cat[text] = cat
+
+        inputs = processor(text=flat_texts, images=pil_img, return_tensors="pt", padding=True)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            probs = outputs.logits_per_image.softmax(dim=1)
+            best_idx = probs.argmax().item()
+            best_text = flat_texts[best_idx]
+            detected = text_to_cat[best_text]
+            confidence = float(probs[0][best_idx])
+
+        label = display_labels.get(detected, detected.capitalize())
+        print(f"[detect-type] detected='{detected}' label='{label}' confidence={confidence:.3f}")
+        return JSONResponse(content={"detectedType": detected, "label": label, "confidence": confidence})
+
+    except Exception as e:
+        print(f"[detect-type] Error: {e}")
+        return JSONResponse(content={"detectedType": None, "label": None})
+
+
+
 @app.post("/remove-bg")
 async def api_remove_bg(file: UploadFile = File(...)):
     try:
