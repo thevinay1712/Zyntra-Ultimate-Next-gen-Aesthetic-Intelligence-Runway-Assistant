@@ -641,6 +641,9 @@ export default function Recommend() {
   // AI Dressing Room (TryOn modal) state
   const [tryOnModalOutfit, setTryOnModalOutfit] = useState(null);
 
+  // Missing proper garments warning state
+  const [missingProperGarments, setMissingProperGarments] = useState([]);
+
   // Drag-to-rotate visualizer states
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
@@ -1006,6 +1009,49 @@ export default function Recommend() {
     }
 
     return unique;
+  };
+
+  const checkMissingProperGarments = () => {
+    const occasionId = params.occasion || 'casual';
+    const cleanOccasion = occasionId.toLowerCase().trim();
+
+    const isProper = (item) => {
+      if (item.occasion?.map(o => o.toLowerCase()).includes(cleanOccasion)) {
+        return true;
+      }
+      if (cleanOccasion === 'formal') {
+        if (item.aesthetic === 'Formal' || item.aesthetic === 'Minimal') {
+          const lowerName = item.name.toLowerCase();
+          if (!lowerName.includes('tshirt') && !lowerName.includes('t-shirt') && !lowerName.includes('hoodie') && !lowerName.includes('sweatpants') && !lowerName.includes('jogger') && !lowerName.includes('shorts') && !lowerName.includes('jersey') && !lowerName.includes('activewear')) {
+            return true;
+          }
+        }
+      } else if (cleanOccasion === 'sport') {
+        if (item.aesthetic === 'Activewear') return true;
+      } else if (cleanOccasion === 'party') {
+        if (['Streetwear', 'Casual', 'Formal'].includes(item.aesthetic)) return true;
+      } else if (cleanOccasion === 'casual') {
+        if (['Casual', 'Streetwear', 'Minimal'].includes(item.aesthetic)) return true;
+      }
+      return false;
+    };
+
+    const tops = clothes.filter((c) => c.category === 'tops');
+    const bottoms = clothes.filter((c) => c.category === 'bottoms');
+    const shoes = clothes.filter((c) => c.category === 'shoes');
+
+    const missing = [];
+    if (tops.length > 0 && !tops.some(isProper)) {
+      missing.push({ category: 'Tops', label: cleanOccasion === 'sport' ? 'activewear t-shirts or tops' : cleanOccasion === 'party' ? 'party tops or shirts' : 'formal shirts or blazers' });
+    }
+    if (bottoms.length > 0 && !bottoms.some(isProper)) {
+      missing.push({ category: 'Bottoms', label: cleanOccasion === 'sport' ? 'activewear joggers or training shorts' : cleanOccasion === 'party' ? 'party trousers or dark jeans' : 'formal trousers or chinos' });
+    }
+    if (shoes.length > 0 && !shoes.some(isProper)) {
+      missing.push({ category: 'Shoes', label: cleanOccasion === 'sport' ? 'athletic or running shoes' : cleanOccasion === 'party' ? 'party shoes or heels' : 'formal dress shoes or loafers' });
+    }
+
+    return missing;
   };
 
   const generateAIAdviceText = (topOutfit) => {
@@ -1456,6 +1502,11 @@ export default function Recommend() {
       try {
         const localRecs = generateLocalRecommendations();
         setRecommendations(localRecs);
+        
+        // Calculate missing proper garments
+        const missing = checkMissingProperGarments();
+        setMissingProperGarments(missing);
+
         if (localRecs.length > 0) {
           success(`Generated ${localRecs.length} matching suggestions for a ${params.occasion} day!`);
           fetchLLMCritique(localRecs[0]);
@@ -1752,6 +1803,24 @@ export default function Recommend() {
                 </div>
               </div>
               <div className="advisor-content">
+                {missingProperGarments.length > 0 && (
+                  <div className="missing-garments-alert animate-fade-in" style={{
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px dashed rgba(239, 68, 68, 0.3)',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    marginBottom: '14px',
+                    fontSize: '0.825rem',
+                    color: '#f87171',
+                    textAlign: 'left'
+                  }}>
+                    <span style={{ fontWeight: 700, display: 'block', marginBottom: '4px' }}>⚠️ Wardrobe Update Recommended:</span>
+                    <span>
+                      Zyntra noticed you do not have any proper {params.occasion} items in your closet for: <strong>{missingProperGarments.map(m => m.category).join(', ')}</strong>. 
+                      Please go to the <Link to="/upload" style={{ color: '#60a5fa', textDecoration: 'underline' }}>Upload page</Link> and scan suitable garments (such as {missingProperGarments.map(m => m.label).join(' / ')}).
+                    </span>
+                  </div>
+                )}
                 {critiqueLoading ? (
                   <div className="advisor-loading-wrapper">
                     <div className="advisor-typing-indicator" style={{ display: 'flex', gap: '6px', margin: '10px 0' }}>
