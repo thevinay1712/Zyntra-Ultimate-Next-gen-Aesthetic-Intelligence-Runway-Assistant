@@ -1,7 +1,7 @@
 @echo off
 title Zyntra Development Launcher
 echo ====================================================
-echo   Zyntra - Next-Gen Wardrobe and Runway Assistant
+echo   Zyntra Ultimate Next-gen Aesthetic Intelligence & Runway Assistant
 echo ====================================================
 echo.
 echo Launching all 3 microservices in separate windows...
