@@ -106,6 +106,8 @@ def _process_job(job_id: str):
                     avatar_id=job["avatar_id"],
                     items=job["items"],
                     progress_cb=progress_cb,
+                    custom_model_bytes=job.get("custom_model_bytes"),
+                    gender=job.get("gender", "male")
                 )
             except Exception as exc:
                 error_container[0] = exc

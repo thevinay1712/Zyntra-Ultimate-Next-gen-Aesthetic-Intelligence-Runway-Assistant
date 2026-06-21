@@ -47,14 +47,20 @@ AVATAR_REGISTRY = [
 # Format: { avatar_id: { category: { x, y, scale } } }
 ACCESSORY_ANCHORS = {
     "male_01": {
-        "shoes":    {"x": 512, "y": 930, "scale": 0.25},
-        "watches":  {"x": 625, "y": 510, "scale": 0.08},
-        "accessories": {"x": 512, "y": 200, "scale": 0.12},
+        "shoes":        {"x": 512, "y": 940, "scale": 0.11},
+        "watches":      {"x": 625, "y": 510, "scale": 0.08},
+        "accessories":  {"x": 512, "y": 200, "scale": 0.12},
+        "sunglasses":   {"x": 512, "y": 140, "scale": 0.15},
+        "hats":         {"x": 512, "y": 95, "scale": 0.22},
+        "belts":        {"x": 512, "y": 480, "scale": 0.20},
     },
     "female_01": {
-        "shoes":    {"x": 512, "y": 930, "scale": 0.22},
-        "watches":  {"x": 635, "y": 510, "scale": 0.07},
-        "accessories": {"x": 512, "y": 195, "scale": 0.11},
+        "shoes":        {"x": 512, "y": 940, "scale": 0.11},
+        "watches":      {"x": 635, "y": 510, "scale": 0.07},
+        "accessories":  {"x": 512, "y": 195, "scale": 0.11},
+        "sunglasses":   {"x": 512, "y": 140, "scale": 0.15},
+        "hats":         {"x": 512, "y": 90, "scale": 0.20},
+        "belts":        {"x": 512, "y": 480, "scale": 0.20},
     },
 }
 

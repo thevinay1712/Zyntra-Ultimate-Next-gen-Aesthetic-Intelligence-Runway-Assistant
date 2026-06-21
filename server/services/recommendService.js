@@ -9,7 +9,7 @@ const { colorHarmonyScore, getColorNote } = require('../utils/colorHarmony');
  * 3. Season matching
  * 4. Style variety (avoids repeating same items)
  */
-async function generateRecommendations(userId, { occasion = 'casual', season, limit = 5 }) {
+async function generateRecommendations(userId, { occasion = 'casual', season, limit = 5, temp }) {
   const checkItemOccasionCompat = (item, occasionId) => {
     if (!occasionId) return 0;
     const cleanOccasion = occasionId.toLowerCase().trim();
@@ -164,13 +164,19 @@ async function generateRecommendations(userId, { occasion = 'casual', season, li
         }
       }
 
-      const isOuterwearAppropriate = season === 'winter' || season === 'fall' || occasion.toLowerCase().trim() === 'formal';
+      const parsedTemp = parseFloat(temp);
+      const isColdWeather = !isNaN(parsedTemp) ? parsedTemp < 15 : false;
+      const isOuterwearAppropriate = isColdWeather || season === 'winter' || season === 'fall' || occasion.toLowerCase().trim() === 'formal';
+      
+      const isFormalOuterwear = bestOuterwear && (bestOuterwear.aesthetic === 'Formal' || bestOuterwear.name?.toLowerCase().includes('blazer') || bestOuterwear.name?.toLowerCase().includes('suit') || bestOuterwear.name?.toLowerCase().includes('tuxedo'));
+      const outerwearAllowed = isOuterwearAppropriate && !(isFormalOuterwear && (occasion.toLowerCase().trim() === 'casual' || occasion.toLowerCase().trim() === 'sport'));
+
       const items = {
         top: top,
         bottom: bottom,
       };
       if (bestShoe && bestShoeScore > 0) items.shoes = bestShoe;
-      if (bestOuterwear && isOuterwearAppropriate && bestOwScore > 40) items.outerwear = bestOuterwear;
+      if (bestOuterwear && outerwearAllowed && bestOwScore > 40) items.outerwear = bestOuterwear;
       if (bestAccessory && bestAccScore > 0) items.accessory = bestAccessory;
 
       outfits.push({

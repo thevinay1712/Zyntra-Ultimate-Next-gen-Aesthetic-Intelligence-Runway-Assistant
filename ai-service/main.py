@@ -25,7 +25,7 @@ import sys
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
-from VirtualTryOn.vton_processor import run_local_vton, call_replicate_vton
+from VirtualTryOn.vton_processor import run_local_vton
 
 # ── New Try-On module imports ──────────────────────────────────────────────────
 from tryon.avatars import AVATAR_REGISTRY, get_avatar_by_id, TRYON_RESULTS_DIR
@@ -467,75 +467,8 @@ async def api_process_upload(
         raise HTTPException(status_code=500, detail=f"Upload processing error: {str(e)}")
 
 
-@app.post("/virtual-tryon")
-async def api_virtual_tryon(
-    image: UploadFile = File(...),
-    gender: str = Form(...),
-    type: str = Form(...),
-    model_image: UploadFile = File(None)
-):
-    """
-    2D AI Virtual Try-On Endpoint (legacy single-garment endpoint).
-    """
-    if gender not in ["male", "female"]:
-        raise HTTPException(status_code=400, detail="Invalid gender. Must be 'male' or 'female'.")
-    if type not in ["tshirt", "jeans"]:
-        raise HTTPException(status_code=400, detail="Invalid garment type. Must be 'tshirt' or 'jeans'.")
-
-    try:
-        # 1. Read and segment garment image
-        garment_contents = await image.read()
-        segmented_bytes, cv2_garment_bgra, _ = segment_garment(garment_contents)
-
-        # 2. Prepare model (human) image
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        vto_dir = os.path.join(base_dir, "VirtualTryOn")
-        
-        if model_image is not None:
-            # User uploaded a custom model photo
-            model_bytes = await model_image.read()
-            nparr = np.frombuffer(model_bytes, np.uint8)
-            cv2_model_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if cv2_model_bgr is None:
-                raise HTTPException(status_code=400, detail="Uploaded custom model image is invalid.")
-        else:
-            # Use default model template
-            model_path = os.path.join(vto_dir, "models", f"{gender}_model.png")
-            if not os.path.exists(model_path):
-                raise HTTPException(status_code=500, detail=f"Default model file not found at {model_path}.")
-            cv2_model_bgr = cv2.imread(model_path)
-            with open(model_path, "rb") as f:
-                model_bytes = f.read()
-
-        # 3. Check for Replicate Cloud Token
-        replicate_token = os.environ.get("REPLICATE_API_TOKEN")
-        output_bytes = None
-        
-        if replicate_token:
-            category = "upper_body" if type == "tshirt" else "lower_body"
-            output_bytes = call_replicate_vton(model_bytes, segmented_bytes, category, replicate_token)
-            
-        if output_bytes is None:
-            # Fallback to local CV engine
-            print("[AI-Service] Running local OpenCV VTON engine...")
-            is_default = (model_image is None)
-            cv2_output_bgr = run_local_vton(cv2_model_bgr, cv2_garment_bgra, type, gender, is_default)
-            success, buffer = cv2.imencode('.png', cv2_output_bgr)
-            if not success:
-                raise Exception("Failed to encode final local VTON composite to PNG.")
-            output_bytes = buffer.tobytes()
-
-        return Response(content=output_bytes, media_type="image/png")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[AI-Service] Try-on error: {e}")
-        raise HTTPException(status_code=500, detail=f"Virtual Try-On failed: {str(e)}")
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# NEW: Outfit Try-On endpoints (IDM-VTON style, async job queue)
+# Outfit Try-On endpoints (IDM-VTON style, async job queue)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/avatars")
@@ -578,6 +511,8 @@ class TryOnRequest(BaseModel):
     items: List[TryOnItem]
     seed: Optional[int] = None
     server_base: Optional[str] = "http://localhost:5000"  # to resolve relative URLs
+    custom_model_url: Optional[str] = None
+    gender: Optional[str] = "male"
 
 
 @app.post("/tryon")
@@ -586,10 +521,28 @@ async def api_post_tryon(req: TryOnRequest):
     Enqueue a full-outfit try-on job.
     Returns { job_id, status: "queued" }.
     """
-    # Validate avatar
-    avatar = get_avatar_by_id(req.avatar_id)
-    if avatar is None:
-        raise HTTPException(status_code=400, detail=f"Avatar '{req.avatar_id}' not found")
+    # Validate avatar (bypass for custom photo uploads)
+    custom_model_bytes = None
+    if req.avatar_id == "custom":
+        if not req.custom_model_url:
+            raise HTTPException(status_code=400, detail="custom_model_url is required when avatar_id is 'custom'")
+        
+        # Download the custom model image bytes
+        url = req.custom_model_url
+        if url.startswith("/"):
+            url = f"{req.server_base}{url}"
+        try:
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                custom_model_bytes = resp.read()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not fetch custom model image from '{url}': {e}"
+            )
+    else:
+        avatar = get_avatar_by_id(req.avatar_id)
+        if avatar is None:
+            raise HTTPException(status_code=400, detail=f"Avatar '{req.avatar_id}' not found")
 
     if not req.items:
         raise HTTPException(status_code=400, detail="At least one garment item is required")
@@ -621,11 +574,18 @@ async def api_post_tryon(req: TryOnRequest):
             "garment_bytes":     garment_bytes,
             "vton_category":     vton_cat,
             "original_category": item.category,
+            "subcategory":       item.subcategory or "",
             "item_id":           item.item_id,
         })
 
     # Build cache key
-    cache_parts = [req.avatar_id] + sorted(
+    if req.avatar_id == "custom":
+        model_hash = hashlib.sha256(custom_model_bytes).hexdigest()[:12]
+        cache_parts = ["custom", model_hash]
+    else:
+        cache_parts = [req.avatar_id]
+
+    cache_parts += sorted(
         f"{i['item_id']}:{hashlib.sha256(i['garment_bytes']).hexdigest()[:12]}"
         for i in resolved_items
     )
@@ -636,6 +596,8 @@ async def api_post_tryon(req: TryOnRequest):
         "items":      resolved_items,
         "cache_key":  cache_key,
         "seed":       req.seed,
+        "custom_model_bytes": custom_model_bytes,
+        "gender":     req.gender or "male",
     })
 
     return JSONResponse(content={"job_id": job_id, "status": "queued"})

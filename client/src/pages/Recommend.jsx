@@ -990,9 +990,12 @@ export default function Recommend() {
         else if (reasons.length > 0) mainReason = reasons[0];
 
         const isOuterwearAppropriate = isColdWeather || params.season === 'winter' || params.season === 'fall' || params.occasion === 'formal';
+        const isFormalOuterwear = bestOuterwear && (bestOuterwear.aesthetic === 'Formal' || bestOuterwear.name?.toLowerCase().includes('blazer') || bestOuterwear.name?.toLowerCase().includes('suit') || bestOuterwear.name?.toLowerCase().includes('tuxedo'));
+        const outerwearAllowed = isOuterwearAppropriate && !(isFormalOuterwear && (params.occasion === 'casual' || params.occasion === 'sport'));
+
         const items = { top, bottom };
         if (bestShoe && bestShoeScore > 0) items.shoes = bestShoe;
-        if (bestOuterwear && isOuterwearAppropriate && bestOwScore > 40) items.outerwear = bestOuterwear;
+        if (bestOuterwear && outerwearAllowed && bestOwScore > 40) items.outerwear = bestOuterwear;
         if (bestAccessory && bestAccScore > 0) items.accessory = bestAccessory;
 
         outfits.push({
@@ -1273,6 +1276,13 @@ export default function Recommend() {
 
     const query = customOccasion.toLowerCase().trim();
     
+    // 0. Length check to prevent layout issues or database overload
+    if (query.length > 80) {
+      setAnalysisError("Please enter a shorter, more specific location (maximum 80 characters).");
+      setDestinationAnalysis(null);
+      return;
+    }
+
     // 1. Off-topic/inappropriate location keywords check
     const offTopicKeywords = ['toilet', 'bathroom', 'restroom', 'washroom', 'wc', 'poop', 'pee', 'shit', 'urinal', 'garbage', 'trash', 'dumpster', 'sewer', 'sewage', 'lavatory', 'commode'];
     const isOffTopic = offTopicKeywords.some(keyword => {
@@ -1286,11 +1296,28 @@ export default function Recommend() {
       return;
     }
 
-    // 2. Gibberish detection check (no vowels in words > 3 characters)
+    // 2. Letters check - must have at least 2 letters
+    const letterCount = (query.match(/[a-zA-Z]/g) || []).length;
+    if (letterCount < 2) {
+      setAnalysisError(`"${customOccasion}" does not contain a valid location name. Please enter a real location or activity containing alphabetical letters.`);
+      setDestinationAnalysis(null);
+      return;
+    }
+
+    // 3. Vowelless check across the whole query
+    const hasAnyVowel = /[aeiouy]/i.test(query);
+    if (!hasAnyVowel) {
+      setAnalysisError(`"${customOccasion}" seems to be gibberish or unrecognized. Please enter a real location or activity.`);
+      setDestinationAnalysis(null);
+      return;
+    }
+
+    // 4. Gibberish check on individual words (cleaning special characters first)
     const words = query.split(/\s+/);
     for (const word of words) {
-      if (/^[a-zA-Z]+$/.test(word) && word.length > 3) {
-        const hasVowels = /[aeiouy]/i.test(word);
+      const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+      if (cleanWord.length >= 2) {
+        const hasVowels = /[aeiouy]/i.test(cleanWord);
         if (!hasVowels) {
           setAnalysisError(`"${customOccasion}" seems to be gibberish or unrecognized. Please enter a real location or activity (e.g., Office, Gym, Cafe with friends).`);
           setDestinationAnalysis(null);
@@ -1299,19 +1326,22 @@ export default function Recommend() {
       }
     }
 
-    // Repeated characters check
+    // 5. Too many repeated characters check
     if (/(.)\1{3,}/.test(query)) {
       setAnalysisError(`"${customOccasion}" contains too many repeated characters. Please enter a real location or activity.`);
       setDestinationAnalysis(null);
       return;
     }
 
-    // Consonant clusters check
-    const consonantClusters = query.match(/[^aeiouy\s]{5,}/g);
-    if (consonantClusters) {
-      setAnalysisError(`"${customOccasion}" contains unrecognized consonant combinations. Please enter a real location or activity.`);
-      setDestinationAnalysis(null);
-      return;
+    // 6. Consonant clusters check within individual words
+    for (const word of words) {
+      const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+      const hasCluster = /[^aeiouy]{5,}/i.test(cleanWord);
+      if (hasCluster) {
+        setAnalysisError(`"${customOccasion}" contains unrecognized consonant combinations. Please enter a real location or activity.`);
+        setDestinationAnalysis(null);
+        return;
+      }
     }
 
     const delayDebounceFn = setTimeout(async () => {
@@ -1341,10 +1371,10 @@ export default function Recommend() {
         console.warn('Destination analysis failed, using local fallback:', err);
         // Generate local template styling guidance so validation still works if API/LLM fails
         let category = 'casual';
-        if (query.includes('office') || query.includes('work') || query.includes('business') || query.includes('meeting') || query.includes('interview') || query.includes('conference') || query.includes('formal') || query.includes('suit')) {
-          category = 'formal';
-        } else if (query.includes('gym') || query.includes('workout') || query.includes('run') || query.includes('sport') || query.includes('active') || query.includes('train') || query.includes('trek') || query.includes('hike') || query.includes('climb') || query.includes('football') || query.includes('soccer') || query.includes('fit')) {
+        if (query.includes('gym') || query.includes('workout') || query.includes('run') || query.includes('sport') || query.includes('active') || query.includes('train') || query.includes('trek') || query.includes('hike') || query.includes('climb') || query.includes('football') || query.includes('soccer') || query.includes('fit')) {
           category = 'sport';
+        } else if (query.includes('office') || query.includes('work') || query.includes('business') || query.includes('meeting') || query.includes('interview') || query.includes('conference') || query.includes('formal') || query.includes('suit')) {
+          category = 'formal';
         } else if (query.includes('party') || query.includes('club') || query.includes('night') || query.includes('bar') || query.includes('pub') || query.includes('celebrat') || query.includes('festive') || query.includes('dance') || query.includes('concert')) {
           category = 'party';
         }
@@ -1467,6 +1497,16 @@ export default function Recommend() {
   const fetchDestinationWeather = async (cityName) => {
     if (!cityName || !cityName.trim()) {
       handleClearDestination();
+      return;
+    }
+    const cleanCity = cityName.trim();
+    if (cleanCity.length > 80) {
+      error("City name is too long (maximum 80 characters).");
+      return;
+    }
+    const letterCount = (cleanCity.match(/[a-zA-Z]/g) || []).length;
+    if (letterCount < 2) {
+      error("Please enter a valid city name containing letters.");
       return;
     }
     try {

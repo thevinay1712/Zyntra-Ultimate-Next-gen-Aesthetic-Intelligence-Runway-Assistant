@@ -12,25 +12,51 @@ const TryOnJob = require('../models/TryOnJob');
 const fs       = require('fs');
 const path     = require('path');
 const crypto   = require('crypto');
+const multer   = require('multer');
 
 const router = express.Router();
 
 const AI_BASE      = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 const SERVER_BASE  = process.env.SERVER_BASE_URL || 'http://localhost:5000';
 const RESULTS_DIR  = path.join(__dirname, '..', 'uploads', 'tryon_results');
+const UPLOADS_DIR  = path.join(__dirname, '..', 'uploads');
 
-// Ensure results directory exists
+// Ensure directories exist
 if (!fs.existsSync(RESULTS_DIR)) {
   fs.mkdirSync(RESULTS_DIR, { recursive: true });
 }
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
-// Serve tryon result images statically (registered in index.js)
-// GET /uploads/tryon_results/:filename
+// Multer config for custom model photo uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 // ─── POST /api/tryon/generate ────────────────────────────────────────────────
-router.post('/generate', auth, async (req, res) => {
+router.post('/generate', auth, upload.single('model_image'), async (req, res) => {
   try {
-    const { avatarId, itemIds, seed } = req.body;
+    const { avatarId, seed, gender } = req.body;
+    let itemIds = req.body.itemIds;
+
+    // Parse itemIds if sent as stringified JSON array from FormData
+    if (typeof itemIds === 'string') {
+      try {
+        itemIds = JSON.parse(itemIds);
+      } catch (e) {
+        itemIds = itemIds.split(',').map(id => id.trim());
+      }
+    }
 
     if (!avatarId || !Array.isArray(itemIds) || itemIds.length === 0) {
       return res.status(400).json({ message: 'avatarId and a non-empty itemIds array are required' });
@@ -64,13 +90,19 @@ router.post('/generate', auth, async (req, res) => {
     }));
 
     // Build cache key: hash(avatarId + sorted "itemId:imageHash")
-    const cachePartsRaw = [avatarId, ...clothes
-      .map(c => `${c._id}:${c.imageHash || c._id}`)
-      .sort()
-    ];
+    // Include custom model upload hash in cache check if it exists
+    let cacheKeyString = avatarId;
+    if (req.file) {
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      cacheKeyString += `|model:${fileHash}`;
+    }
+    const sortedItemKeys = clothes.map(c => `${c._id}:${c.imageHash || c._id}`).sort();
+    cacheKeyString += `|${sortedItemKeys.join('|')}`;
+
     const cacheKey = crypto
       .createHash('sha256')
-      .update(cachePartsRaw.join('|'))
+      .update(cacheKeyString)
       .digest('hex');
 
     // Check for an existing completed job with the same cache key
@@ -81,6 +113,10 @@ router.post('/generate', auth, async (req, res) => {
     });
     if (cached) {
       console.log(`[TryOn] Cache HIT for key ${cacheKey.slice(0, 12)}…`);
+      // If we uploaded a custom model, we can clean up the temp file since we have a cache hit
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
       return res.json({
         jobId:     cached._id.toString(),
         status:    'done',
@@ -89,21 +125,30 @@ router.post('/generate', auth, async (req, res) => {
       });
     }
 
+    // Build AI service payload
+    const aiPayload = {
+      avatar_id:   avatarId,
+      items,
+      seed:        seed ? parseInt(seed, 10) : null,
+      server_base: SERVER_BASE,
+      custom_model_url: req.file ? `/uploads/${req.file.filename}` : null,
+      gender:      gender || 'male'
+    };
+
     // Forward job to ai-service
     const aiRes = await fetch(`${AI_BASE}/tryon`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        avatar_id:   avatarId,
-        items,
-        seed:        seed || null,
-        server_base: SERVER_BASE,
-      }),
-      timeout: 10000,
+      body: JSON.stringify(aiPayload),
+      timeout: 15000,
     });
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
+      // Clean up file on error
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
       return res.status(502).json({ message: `AI service error: ${errText}` });
     }
 

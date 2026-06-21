@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '../context/ToastContext';
-import { clothingAPI } from '../lib/api';
+import { clothingAPI, tryOnAPI } from '../lib/api';
 import './Avatar.css';
 
 /* ─── Icons ─── */
@@ -25,54 +25,54 @@ const SCHEMATIC_CONFIG = {
     tshirt: {
       label: "Top (Shirt / Torso Fit)",
       hotspot: { top: '18%', left: '38%', width: '24%', height: '28%' },
-      line: { startX: 50, startY: 32, endX: 26, endY: 32, isLeft: true }
+      line: { startX: 50, startY: 32, endX: 26, endY: 50, isLeft: true }
     },
     jeans: {
       label: "Bottom (Pants / Waist Fit)",
       hotspot: { top: '46%', left: '40%', width: '20%', height: '44%' },
-      line: { startX: 50, startY: 68, endX: 74, endY: 68, isLeft: false }
+      line: { startX: 50, startY: 68, endX: 74, endY: 70, isLeft: false }
     },
     shoes: {
       label: "Shoes (Footwear / Sole Fit)",
       hotspot: { top: '90%', left: '39%', width: '22%', height: '8%' },
-      line: { startX: 50, startY: 94, endX: 26, endY: 82, isLeft: true }
+      line: { startX: 50, startY: 94, endX: 26, endY: 80, isLeft: true }
     },
     accessory: {
       label: "Accessory (Wrist / Watch Fit)",
       hotspot: { top: '48%', left: '61%', width: '4%', height: '5%' },
-      line: { startX: 63, startY: 50, endX: 74, endY: 50, isLeft: false }
+      line: { startX: 63, startY: 50, endX: 74, endY: 35, isLeft: false }
     },
     outerwear: {
       label: "Outerwear (Blazer / Jacket Fit)",
       hotspot: { top: '17%', left: '34%', width: '32%', height: '31%' },
-      line: { startX: 50, startY: 33, endX: 26, endY: 33, isLeft: true }
+      line: { startX: 50, startY: 33, endX: 26, endY: 20, isLeft: true }
     }
   },
   female: {
     tshirt: {
       label: "Top (Shirt / Torso Fit)",
       hotspot: { top: '16%', left: '39%', width: '22%', height: '33%' },
-      line: { startX: 50, startY: 32.5, endX: 26, endY: 32.5, isLeft: true }
+      line: { startX: 50, startY: 32.5, endX: 26, endY: 50, isLeft: true }
     },
     jeans: {
       label: "Bottom (Pants / Waist Fit)",
       hotspot: { top: '48%', left: '40%', width: '20%', height: '44%' },
-      line: { startX: 50, startY: 72, endX: 74, endY: 72, isLeft: false }
+      line: { startX: 50, startY: 72, endX: 74, endY: 70, isLeft: false }
     },
     shoes: {
       label: "Shoes (Footwear / Sole Fit)",
       hotspot: { top: '90%', left: '39%', width: '22%', height: '8%' },
-      line: { startX: 50, startY: 93.5, endX: 26, endY: 82, isLeft: true }
+      line: { startX: 50, startY: 93.5, endX: 26, endY: 80, isLeft: true }
     },
     accessory: {
       label: "Accessory (Wrist / Watch Fit)",
       hotspot: { top: '48%', left: '61%', width: '4%', height: '5%' },
-      line: { startX: 63, startY: 50, endX: 74, endY: 50, isLeft: false }
+      line: { startX: 63, startY: 50, endX: 74, endY: 35, isLeft: false }
     },
     outerwear: {
       label: "Outerwear (Blazer / Jacket Fit)",
       hotspot: { top: '15%', left: '35%', width: '30%', height: '35%' },
-      line: { startX: 50, startY: 32.5, endX: 26, endY: 32.5, isLeft: true }
+      line: { startX: 50, startY: 32.5, endX: 26, endY: 20, isLeft: true }
     }
   }
 };
@@ -136,19 +136,31 @@ export default function Avatar() {
   const [customModelPreview, setCustomModelPreview] = useState(null);
   const [garmentType, setGarmentType]         = useState('tshirt');
   const [source, setSource]                   = useState('upload');
-  const [selectedItem, setSelectedItem]       = useState(null);
-  const [uploadedFile, setUploadedFile]       = useState(null);
-  const [uploadedPreview, setUploadedPreview] = useState(null);
+  const [selectedItems, setSelectedItems]     = useState({
+    tshirt: null,
+    jeans: null,
+    shoes: null,
+    outerwear: null,
+    accessory: null
+  });
 
   const [wardrobeItems, setWardrobeItems]     = useState([]);
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
 
-  /* Try-on result */
-  const [resultUrl, setResultUrl]   = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  /* Try-on result & job queue states */
+  const [resultUrl, setResultUrl]         = useState(null);
+  const [isProcessing, setIsProcessing]   = useState(false);
   const [processingMsg, setProcessingMsg] = useState('');
-  const [elapsedSecs, setElapsedSecs] = useState(0);
+  const [elapsedSecs, setElapsedSecs]     = useState(0);
+  const [jobId, setJobId]                 = useState(null);
+  const [jobStatus, setJobStatus]         = useState(null);
+  const [queuePos, setQueuePos]           = useState(0);
+  const [jobError, setJobError]           = useState(null);
+  const [activeTab, setActiveTab]         = useState('schematic'); // 'schematic' | 'ai'
+  const [showComparison, setShowComparison] = useState(false);
+
   const timerRef = useRef(null);
+  const pollRef = useRef(null);
 
   const { success, error } = useToast();
 
@@ -168,18 +180,28 @@ export default function Avatar() {
     })();
   }, []);
 
+  /* Clean up timers and polls on unmount */
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   /* Derived */
   const modelUrl = modelType === 'custom'
     ? customModelPreview
     : `http://${window.location.hostname}:5000/models/${gender}_model.png`;
 
-  const activeGarmentUrl = source === 'wardrobe' && selectedItem
-    ? `http://${window.location.hostname}:5000${selectedItem.imageUrl}`
-    : uploadedPreview || null;
+  const activeGarmentUrl = selectedItems[garmentType]
+    ? `http://${window.location.hostname}:5000${selectedItems[garmentType].imageUrl}`
+    : null;
 
-  const activeGarmentName = source === 'wardrobe' && selectedItem
-    ? selectedItem.name
-    : uploadedFile?.name || null;
+  const activeGarmentName = selectedItems[garmentType]
+    ? selectedItems[garmentType].name
+    : null;
+
+  const hasAnySelected = Object.values(selectedItems).some(item => item !== null);
 
   const categoryMap = {
     tshirt: 'tops',
@@ -196,12 +218,46 @@ export default function Avatar() {
   );
 
   /* Handlers */
-  const handleGarmentUpload = e => {
+  const handleGarmentUpload = async e => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => { setUploadedFile(file); setUploadedPreview(reader.result); setResultUrl(null); };
-    reader.readAsDataURL(file);
+
+    setIsProcessing(true);
+    setResultUrl(null);
+    setProcessingMsg('Uploading and analyzing garment…');
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // Pre-validated descriptive names matching categories to pass CLIP validation
+      const descriptiveNames = {
+        tshirt: 'Classic T-Shirt',
+        jeans: 'Casual Jeans',
+        shoes: 'Fashion Shoes',
+        outerwear: 'Stylish Jacket',
+        accessory: 'Wrist Watch'
+      };
+      const nameToUse = descriptiveNames[garmentType] || 'Garment';
+      formData.append('name', nameToUse);
+      formData.append('category', categoryMap[garmentType]);
+
+      const res = await clothingAPI.upload(formData);
+      const newClothing = res.data.clothing;
+
+      // Add to local wardrobe list
+      setWardrobeItems(prev => [newClothing, ...prev]);
+
+      // Select the new item for the active slot
+      setSelectedItems(prev => ({ ...prev, [garmentType]: newClothing }));
+      success(`📥 Saved to closet: "${nameToUse}"`);
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to upload garment';
+      error(errMsg);
+    } finally {
+      setIsProcessing(false);
+      setProcessingMsg('');
+    }
   };
 
   const handleCustomModelUpload = e => {
@@ -214,13 +270,45 @@ export default function Avatar() {
 
   const startTimer = () => {
     setElapsedSecs(0);
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
   };
-  const stopTimer = () => { clearInterval(timerRef.current); };
+
+  const startPolling = (jid) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await tryOnAPI.getStatus(jid);
+        const data = res.data;
+        setJobStatus(data.status);
+        setProcessingMsg(data.progress || 'Generating try-on…');
+        setQueuePos(data.queuePos || data.queue_pos || 0);
+
+        if (data.status === 'done') {
+          clearInterval(pollRef.current);
+          clearInterval(timerRef.current);
+          setIsProcessing(false);
+          const url = data.resultUrl || data.result_url;
+          setResultUrl(url.startsWith('/') ? `http://${window.location.hostname}:5000${url}` : url);
+          success('✨ Virtual Try-On complete!');
+        } else if (data.status === 'failed') {
+          clearInterval(pollRef.current);
+          clearInterval(timerRef.current);
+          setIsProcessing(false);
+          setJobError(data.error || 'Generation failed. Please try again.');
+          error(data.error || 'Try-On failed.');
+        }
+      } catch (e) {
+        console.warn('Poll error:', e);
+      }
+    }, 2500);
+  };
 
   const handleTryOn = async () => {
-    if (!activeGarmentUrl) {
-      error(source === 'upload' ? 'Please upload a garment image.' : 'Please select an item from your wardrobe.');
+    // Get all active items
+    const activeKeys = Object.keys(selectedItems).filter(k => selectedItems[k] !== null);
+    if (activeKeys.length === 0) {
+      error('Please select or upload at least one garment.');
       return;
     }
     if (modelType === 'custom' && !customModelFile) {
@@ -230,33 +318,104 @@ export default function Avatar() {
 
     setIsProcessing(true);
     setResultUrl(null);
-    setProcessingMsg('Segmenting garment boundaries…');
+    setJobError(null);
+    setJobStatus('queued');
+    setProcessingMsg('Submitting virtual try-on job…');
+    setActiveTab('ai'); // Auto-switch to Runway AI Render view
     startTimer();
 
-    setTimeout(() => {
-      setProcessingMsg('Calculating body coordinates…');
-    }, 400);
+    const itemIds = activeKeys.map(k => selectedItems[k]._id);
 
-    setTimeout(() => {
-      setProcessingMsg('Aligning fit blueprint…');
-    }, 800);
+    if (modelType === 'default') {
+      // Async job queue route (IDM-VTON space engine)
+      const avatarId = gender === 'male' ? 'male_01' : 'female_01';
+      try {
+        setProcessingMsg('Enqueuing virtual try-on job…');
+        const res = await tryOnAPI.generate({
+          avatarId,
+          itemIds,
+        });
+        const data = res.data;
 
-    setTimeout(() => {
-      stopTimer();
-      setIsProcessing(false);
-      setProcessingMsg('');
-      setResultUrl('blueprint');
-      success('📐 Fit Blueprint Complete!');
-    }, 1200);
+        if (data.status === 'done' && data.resultUrl) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setIsProcessing(false);
+          setJobStatus('done');
+          const url = data.resultUrl;
+          setResultUrl(url.startsWith('/') ? `http://${window.location.hostname}:5000${url}` : url);
+          success('✨ Served from cache!');
+          return;
+        }
+
+        setJobId(data.jobId);
+        setJobStatus(data.status || 'queued');
+        setProcessingMsg('Waiting in queue…');
+        startPolling(data.jobId);
+      } catch (err) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsProcessing(false);
+        setJobStatus('failed');
+        const errMsg = err.response?.data?.message || err.message || 'Try-on service unavailable';
+        setJobError(errMsg);
+        error(errMsg);
+      }
+    } else {
+      // Custom user photo route inside the same async job queue!
+      try {
+        setProcessingMsg('Uploading model photo & enqueuing job…');
+        const formData = new FormData();
+        formData.append('avatarId', 'custom');
+        formData.append('gender', gender);
+        formData.append('itemIds', JSON.stringify(itemIds));
+        formData.append('model_image', customModelFile);
+
+        const res = await tryOnAPI.generate(formData);
+        const data = res.data;
+
+        if (data.status === 'done' && data.resultUrl) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setIsProcessing(false);
+          setJobStatus('done');
+          const url = data.resultUrl;
+          setResultUrl(url.startsWith('/') ? `http://${window.location.hostname}:5000${url}` : url);
+          success('✨ Served from cache!');
+          return;
+        }
+
+        setJobId(data.jobId);
+        setJobStatus(data.status || 'queued');
+        setProcessingMsg('Waiting in queue…');
+        startPolling(data.jobId);
+      } catch (err) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsProcessing(false);
+        setJobStatus('failed');
+        const errMsg = err.response?.data?.message || err.message || 'Try-on service unavailable';
+        setJobError(errMsg);
+        error(errMsg);
+      }
+    }
   };
 
-  const handleReset = () => { setResultUrl(null); };
+  const handleReset = () => {
+    setSelectedItems({
+      tshirt: null,
+      jeans: null,
+      shoes: null,
+      outerwear: null,
+      accessory: null
+    });
+    setResultUrl(null);
+    setJobError(null);
+    setJobStatus(null);
+    setActiveTab('schematic');
+  };
 
   const handleDownload = () => {
     if (!resultUrl) return;
     const a = document.createElement('a');
     a.href = resultUrl;
-    a.download = `zyntra_tryon_${garmentType}_${Date.now()}.png`;
+    a.download = `zyntra_tryon_${Date.now()}.png`;
     a.click();
   };
 
@@ -279,6 +438,27 @@ export default function Avatar() {
           {/* ════ LEFT — Result Canvas ════ */}
           <div className="dr-canvas-col">
 
+            {!isProcessing && (resultUrl || hasAnySelected) && (
+              <div className="dr-main-tabs">
+                <button
+                  type="button"
+                  className={`dr-main-tab ${activeTab === 'schematic' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('schematic')}
+                >
+                  📐 Fit Blueprint
+                </button>
+                <button
+                  type="button"
+                  className={`dr-main-tab ${activeTab === 'ai' ? 'active' : ''}`}
+                  disabled={!resultUrl}
+                  title={!resultUrl ? 'Run "Try It On" first to view AI Render' : ''}
+                  onClick={() => setActiveTab('ai')}
+                >
+                  ✨ Runway AI Render
+                </button>
+              </div>
+            )}
+
             {isProcessing ? (
               /* ── Processing state ── */
               <div className="dr-result-card" style={{ minHeight: 520, justifyContent: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -290,29 +470,37 @@ export default function Avatar() {
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <p className="dr-loader-title">{processingMsg}</p>
+                  {queuePos > 0 && <p className="dr-loader-step" style={{ color: 'var(--accent-violet-light)' }}>Queue Position: {queuePos}</p>}
                   <p className="dr-loader-step">{elapsedSecs}s elapsed</p>
                 </div>
-                {/* Show garment thumbnail while waiting */}
-                {activeGarmentUrl && (
-                  <div style={{ opacity: 0.5, borderRadius: 12, overflow: 'hidden', width: 90, height: 90 }}>
-                    <img src={activeGarmentUrl} alt="garment" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                {/* Show garment thumbnails while waiting */}
+                {hasAnySelected && (
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    {Object.entries(selectedItems).map(([key, item]) => {
+                      if (!item) return null;
+                      return (
+                        <div key={key} style={{ opacity: 0.5, borderRadius: 8, overflow: 'hidden', width: 44, height: 44, background: 'white', padding: '2px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <img src={`http://${window.location.hostname}:5000${item.imageUrl}`} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 280 }}>
-                  Analyzing garment layout coordinates and drawing connections to body fit zones...
+                  Generating photorealistic virtual try-on using IDM-VTON neural networks...
                 </p>
               </div>
 
-            ) : resultUrl === 'blueprint' || activeGarmentUrl ? (
+            ) : activeTab === 'schematic' && (resultUrl || hasAnySelected) ? (
               /* ── Interactive Fit Blueprint View ── */
               <div className="dr-result-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="dr-result-header" style={{ padding: '16px 20px' }}>
-                  {resultUrl === 'blueprint' ? (
+                  {resultUrl ? (
                     <span className="dr-result-badge">📐 Fit Blueprint Complete</span>
                   ) : (
                     <span className="dr-result-badge" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>📐 Interactive Fit Blueprint</span>
                   )}
-                  {resultUrl === 'blueprint' && (
+                  {resultUrl && (
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="btn btn-ghost btn-sm" onClick={handleReset}><IconRefresh /> Reset</button>
                     </div>
@@ -327,86 +515,110 @@ export default function Avatar() {
                       alt="Model"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {/* Precise white neon contour highlight */}
-                    {activeConfig && (
-                      <svg
-                        viewBox="0 0 100 100"
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          pointerEvents: 'none',
-                          zIndex: 2,
-                        }}
-                      >
-                        <path
-                          d={getGarmentPath(modelType === 'custom' ? 'custom' : gender, garmentType, activeConfig)}
-                          className="neon-running-path"
-                        />
-                      </svg>
-                    )}
-
-                    {/* SVG Line */}
-                    {activeConfig && (() => {
-                      const coords = getPixelCoordinates(activeConfig);
-                      if (!coords) return null;
-                      
-                      const midX = coords.isLeft 
-                        ? coords.startX - (coords.startX - coords.endX) * 0.4 
-                        : coords.startX + (coords.endX - coords.startX) * 0.4;
-                      const pathData = `M ${coords.startX} ${coords.startY} L ${midX} ${coords.startY} L ${midX} ${coords.endY} L ${coords.endX} ${coords.endY}`;
-
-                      return (
-                        <svg className="schematic-svg-layer" viewBox="0 0 480 360" style={{ position: 'absolute', left: '-105px', width: '480px', height: '360px', pointerEvents: 'none', zIndex: 3 }}>
-                          <defs>
-                            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ffffff" />
-                            </marker>
-                          </defs>
-                          {/* High contrast dark outline shadow for white backgrounds */}
+                    
+                    {/* Precise white neon contour highlights */}
+                    <svg
+                      viewBox="0 0 100 100"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                      }}
+                    >
+                      {Object.keys(SCHEMATIC_CONFIG[gender] || {}).map(key => {
+                        const isSelected = selectedItems[key] !== null;
+                        const isActive = garmentType === key;
+                        if (!isSelected && !isActive) return null;
+                        
+                        const config = SCHEMATIC_CONFIG[gender]?.[key];
+                        const pathD = getGarmentPath(modelType === 'custom' ? 'custom' : gender, key, config);
+                        
+                        return (
                           <path
-                            d={pathData}
-                            style={{ fill: 'none', stroke: 'rgba(10, 10, 15, 0.85)', strokeWidth: 2.2, strokeLinecap: 'round' }}
+                            key={key}
+                            d={pathD}
+                            className="neon-running-path"
+                            style={{
+                              stroke: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.4)',
+                              strokeDasharray: isSelected ? 'none' : '3 3',
+                              opacity: isSelected ? 1 : 0.6,
+                              filter: isSelected ? 'drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 8px var(--accent-violet))' : 'none'
+                            }}
                           />
-                          {/* Glowing violet drop shadow */}
-                          <path
-                            d={pathData}
-                            style={{ fill: 'none', stroke: 'var(--accent-violet)', strokeWidth: 1.5, strokeLinecap: 'round', opacity: 0.6, filter: 'blur(1.5px)' }}
-                          />
-                          {/* White neon core line */}
-                          <path
-                            d={pathData}
-                            className="schematic-line active"
-                            markerEnd="url(#arrow)"
-                            style={{ fill: 'none', stroke: '#ffffff', strokeWidth: 0.8, strokeLinecap: 'round' }}
-                          />
-                          {/* Dot shadow */}
-                          <circle
-                            cx={coords.startX}
-                            cy={coords.startY}
-                            r="4.5"
-                            style={{ fill: 'rgba(10, 10, 15, 0.85)' }}
-                          />
-                          {/* Dot core */}
-                          <circle
-                            cx={coords.startX}
-                            cy={coords.startY}
-                            r="2"
-                            className="schematic-dot active"
-                            style={{ fill: '#ffffff', filter: 'drop-shadow(0 0 2px #ffffff)' }}
-                          />
-                        </svg>
-                      );
-                    })()}
+                        );
+                      })}
+                    </svg>
 
-                    {/* Garment card */}
-                    {activeConfig && (() => {
-                      const coords = getPixelCoordinates(activeConfig);
+                    {/* SVG Lines Layer */}
+                    <svg className="schematic-svg-layer" viewBox="0 0 480 360" style={{ position: 'absolute', left: '-105px', width: '480px', height: '360px', pointerEvents: 'none', zIndex: 3 }}>
+                      <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ffffff" />
+                        </marker>
+                      </defs>
+                      {Object.entries(selectedItems).map(([key, item]) => {
+                        if (!item) return null;
+                        const config = SCHEMATIC_CONFIG[gender]?.[key];
+                        const coords = getPixelCoordinates(config);
+                        if (!coords) return null;
+
+                        const midX = coords.isLeft 
+                          ? coords.startX - (coords.startX - coords.endX) * 0.4 
+                          : coords.startX + (coords.endX - coords.startX) * 0.4;
+                        const pathData = `M ${coords.startX} ${coords.startY} L ${midX} ${coords.startY} L ${midX} ${coords.endY} L ${coords.endX} ${coords.endY}`;
+
+                        return (
+                          <g key={key}>
+                            {/* High contrast shadow */}
+                            <path
+                              d={pathData}
+                              style={{ fill: 'none', stroke: 'rgba(10, 10, 15, 0.85)', strokeWidth: 2.2, strokeLinecap: 'round' }}
+                            />
+                            {/* Glowing core */}
+                            <path
+                              d={pathData}
+                              style={{ fill: 'none', stroke: 'var(--accent-violet)', strokeWidth: 1.5, strokeLinecap: 'round', opacity: 0.6, filter: 'blur(1.5px)' }}
+                            />
+                            {/* Main white line */}
+                            <path
+                              d={pathData}
+                              className="schematic-line active"
+                              markerEnd="url(#arrow)"
+                              style={{ fill: 'none', stroke: '#ffffff', strokeWidth: 0.8, strokeLinecap: 'round' }}
+                            />
+                            {/* Dot shadow */}
+                            <circle
+                              cx={coords.startX}
+                              cy={coords.startY}
+                              r="4.5"
+                              style={{ fill: 'rgba(10, 10, 15, 0.85)' }}
+                            />
+                            {/* Dot core */}
+                            <circle
+                              cx={coords.startX}
+                              cy={coords.startY}
+                              r="2"
+                              className="schematic-dot active"
+                              style={{ fill: '#ffffff', filter: 'drop-shadow(0 0 2px #ffffff)' }}
+                            />
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    {/* Garment Cards */}
+                    {Object.entries(selectedItems).map(([key, item]) => {
+                      if (!item) return null;
+                      const config = SCHEMATIC_CONFIG[gender]?.[key];
+                      const coords = getPixelCoordinates(config);
                       if (!coords) return null;
                       return (
                         <div
-                          className="schematic-garment-card active single-fit"
+                          key={key}
+                          className={`schematic-garment-card ${garmentType === key ? 'active' : ''} single-fit`}
                           style={{
                             position: 'absolute',
                             top: `${coords.endY}px`,
@@ -415,33 +627,103 @@ export default function Avatar() {
                             zIndex: 10,
                             [coords.isLeft ? 'left' : 'right']: '-115px'
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGarmentType(key);
+                          }}
                         >
                           <div className="schematic-garment-img-box" style={{ height: '70px', padding: '4px' }}>
-                            <img src={activeGarmentUrl} className="schematic-garment-img" style={{ maxHeight: '100%' }} alt={activeGarmentName || 'Garment'} />
+                            <img
+                              src={`http://${window.location.hostname}:5000${item.imageUrl}`}
+                              className="schematic-garment-img"
+                              style={{ maxHeight: '100%' }}
+                              alt={item.name}
+                            />
                           </div>
                           <div className="schematic-garment-meta">
-                            <span className="schematic-garment-slot">{activeConfig.label.split(' ')[0]}</span>
-                            <span className="schematic-garment-name" title={activeGarmentName}>{activeGarmentName || 'Selected Garment'}</span>
+                            <span className="schematic-garment-slot">{config.label.split(' ')[0]}</span>
+                            <span className="schematic-garment-name" title={item.name}>{item.name}</span>
                           </div>
                         </div>
                       );
-                    })()}
+                    })}
                   </div>
                 </div>
 
                 {/* Info strip below the schematic */}
                 <div className="dr-info-strip" style={{ margin: '12px 20px 20px' }}>
                   <div className="dr-info-row">
-                    <span className="dr-info-label">Fit Area:</span>
+                    <span className="dr-info-label">Active Slot:</span>
                     <span className="dr-info-value" style={{ color: 'var(--accent-violet-light)' }}>{activeConfig?.label}</span>
                   </div>
                   <div className="dr-info-row">
-                    <span className="dr-info-label">Status:</span>
-                    <span className="dr-info-value" style={{ color: resultUrl === 'blueprint' ? '#10b981' : '#f59e0b' }}>
-                      {resultUrl === 'blueprint' ? '✓ Calibration Complete' : '⚙️ Calibration Pending'}
+                    <span className="dr-info-label">Outfit Status:</span>
+                    <span className="dr-info-value" style={{ color: resultUrl ? '#10b981' : '#f59e0b' }}>
+                      {resultUrl ? '✓ Calibration Complete' : `⚙️ ${Object.values(selectedItems).filter(Boolean).length} Garment(s) Selected`}
                     </span>
                   </div>
                 </div>
+              </div>
+
+            ) : activeTab === 'ai' && resultUrl ? (
+              /* ── Runway AI Render View ── */
+              <div className="dr-result-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="dr-result-header" style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${!showComparison ? 'btn-primary' : 'btn-ghost'}`}
+                      onClick={() => setShowComparison(false)}
+                    >
+                      ✨ Try-On Result
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${showComparison ? 'btn-primary' : 'btn-ghost'}`}
+                      onClick={() => setShowComparison(true)}
+                    >
+                      🔄 Compare
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={handleReset}><IconRefresh /> Reset</button>
+                  </div>
+                </div>
+
+                {!showComparison ? (
+                  <div className="dr-result-img-wrap">
+                    <img
+                      src={resultUrl}
+                      alt="Virtual Try-On Result"
+                      className="dr-result-img"
+                    />
+                    <div className="dr-result-actions">
+                      <button type="button" className="btn btn-primary btn-sm" onClick={handleDownload}>
+                        <IconDownload /> Download Look
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="dr-comparison">
+                    <div className="comparison-side">
+                      <span className="comparison-label">Model</span>
+                      <img
+                        src={modelUrl}
+                        alt="Original model"
+                        className="comparison-img"
+                      />
+                    </div>
+                    <div className="comparison-divider">vs</div>
+                    <div className="comparison-side">
+                      <span className="comparison-label">With Garment</span>
+                      <img
+                        src={resultUrl}
+                        alt="Try-On Result"
+                        className="comparison-img"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
             ) : (
@@ -505,24 +787,58 @@ export default function Avatar() {
               )}
             </div>
 
-            {/* Step 2 – Garment type */}
+            {/* Step 2 – Outfit Slots */}
             <div className="editor-group">
-              <label className="editor-group-title">2. Garment Type</label>
-              <div className="gender-btn-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              <label className="editor-group-title">2. Outfit Slots (Select / Upload for each)</label>
+              <div className="dr-slots-list">
                 {[
-                  ['tshirt', '👕 Top'],
-                  ['jeans', '👖 Bottom'],
-                  ['shoes', '👟 Shoes'],
-                  ['outerwear', '🧥 Outerwear'],
-                  ['accessory', '⌚ Accessory']
-                ].map(([v, label]) => (
-                  <button key={v} type="button"
-                    className={`gender-btn ${garmentType === v ? 'active' : ''}`}
-                    style={{ padding: '8px 4px', fontSize: '0.78rem' }}
-                    onClick={() => { setGarmentType(v); setSelectedItem(null); setResultUrl(null); }}>
-                    {label}
-                  </button>
-                ))}
+                  { key: 'tshirt', label: 'Top', icon: '👕' },
+                  { key: 'jeans', label: 'Bottom', icon: '👖' },
+                  { key: 'outerwear', label: 'Outerwear', icon: '🧥' },
+                  { key: 'shoes', label: 'Shoes', icon: '👟' },
+                  { key: 'accessory', label: 'Accessory', icon: '⌚' }
+                ].map(slot => {
+                  const selectedItem = selectedItems[slot.key];
+                  return (
+                    <div
+                      key={slot.key}
+                      className={`dr-slot-row ${garmentType === slot.key ? 'active' : ''} ${selectedItem ? 'has-item' : ''}`}
+                      onClick={() => setGarmentType(slot.key)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: '1.2rem' }}>{slot.icon}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{slot.label}</span>
+                          <span style={{ fontSize: '0.8rem', color: selectedItem ? 'var(--text-primary)' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {selectedItem ? selectedItem.name : '+ Select / Upload'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {selectedItem && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <img
+                            src={`http://${window.location.hostname}:5000${selectedItem.imageUrl}`}
+                            alt={selectedItem.name}
+                            style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '4px', background: 'white', padding: '2px', border: '1px solid rgba(255,255,255,0.1)' }}
+                          />
+                          <button
+                            type="button"
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-coral)', fontSize: '0.85rem', cursor: 'pointer', padding: '4px' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItems(prev => ({ ...prev, [slot.key]: null }));
+                              setResultUrl(null);
+                            }}
+                            title="Remove item"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -534,7 +850,7 @@ export default function Avatar() {
                   <button key={v} type="button"
                     className={`gender-btn ${source === v ? 'active' : ''}`}
                     style={{ fontSize: '0.8rem' }}
-                    onClick={() => { setSource(v); setResultUrl(null); if (v==='upload') setSelectedItem(null); else { setUploadedFile(null); setUploadedPreview(null); } }}>
+                    onClick={() => { setSource(v); }}>
                     {label}
                   </button>
                 ))}
@@ -544,12 +860,21 @@ export default function Avatar() {
             {/* Garment input */}
             {source === 'upload' ? (
               <div className="editor-group animate-fade-in">
-                {uploadedPreview ? (
+                {selectedItems[garmentType] ? (
                   <div className="dr-garment-preview-large">
-                    <img src={uploadedPreview} alt="garment" className="dr-garment-preview-img" />
+                    <img
+                      src={`http://${window.location.hostname}:5000${selectedItems[garmentType].imageUrl}`}
+                      alt="garment"
+                      className="dr-garment-preview-img"
+                    />
                     <div className="dr-garment-preview-meta">
-                      <span>{uploadedFile?.name}</span>
-                      <button onClick={() => { setUploadedFile(null); setUploadedPreview(null); setResultUrl(null); }}>✕ Remove</button>
+                      <span>{selectedItems[garmentType].name}</span>
+                      <button onClick={() => {
+                        setSelectedItems(prev => ({ ...prev, [garmentType]: null }));
+                        setResultUrl(null);
+                      }}>
+                        ✕ Remove
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -586,11 +911,14 @@ export default function Avatar() {
                   ) : (
                     <div className="dr-wardrobe-grid">
                       {filteredWardrobe.map(item => (
-                        <div key={item._id} onClick={() => { setSelectedItem(item); setResultUrl(null); }}
-                          className={`dr-wardrobe-chip ${selectedItem?._id === item._id ? 'active' : ''}`}
+                        <div key={item._id} onClick={() => {
+                          setSelectedItems(prev => ({ ...prev, [garmentType]: item }));
+                          setResultUrl(null);
+                        }}
+                          className={`dr-wardrobe-chip ${selectedItems[garmentType]?._id === item._id ? 'active' : ''}`}
                           title={item.name}>
                           <img src={`http://${window.location.hostname}:5000${item.imageUrl}`} alt={item.name} />
-                          {selectedItem?._id === item._id && <div className="dr-wardrobe-chip-check"><IconCheck /></div>}
+                          {selectedItems[garmentType]?._id === item._id && <div className="dr-wardrobe-chip-check"><IconCheck /></div>}
                           <div className="dr-wardrobe-chip-name">{item.name}</div>
                         </div>
                       ))}
@@ -606,7 +934,7 @@ export default function Avatar() {
               className="btn btn-render-glow font-heading"
               style={{ padding: '16px 20px', fontSize: '1.05rem', marginTop: 4 }}
               onClick={handleTryOn}
-              disabled={isProcessing || !activeGarmentUrl}
+              disabled={isProcessing || !hasAnySelected}
             >
               {isProcessing ? `⏳ AI Processing… ${elapsedSecs}s` : '✨ Try It On'}
             </button>

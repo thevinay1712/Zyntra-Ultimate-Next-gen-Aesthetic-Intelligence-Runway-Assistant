@@ -1,0 +1,27 @@
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Editor/OS directories and files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Caches and Temporary assets
+ai-service/cache/
+ai-service/.pytest_cache/
+
+# Local design / screenshots
+draft_img/
+
+# Express Server uploads (except the directory itself)
+server/uploads/*
+!server/uploads/.gitkeep

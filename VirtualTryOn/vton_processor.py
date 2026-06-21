@@ -1,72 +1,7 @@
 import cv2
 import numpy as np
-import os
-import urllib.request
-import json
-import time
-import base64
 from io import BytesIO
 from PIL import Image
-
-
-def call_replicate_vton(human_bytes, garment_bytes, category, token):
-    """
-    Optional Cloud AI virtual try-on using Replicate API (yisol/idm-vton).
-    Accepts raw bytes and sends them as base64 data URIs.
-    """
-    human_b64 = f"data:image/png;base64,{base64.b64encode(human_bytes).decode('utf-8')}"
-    garment_b64 = f"data:image/png;base64,{base64.b64encode(garment_bytes).decode('utf-8')}"
-
-    headers = {
-        "Authorization": f"Token {token}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "version": "c87181b2c6e6438997d91e6b8c949c81525f05b0a316c27806542fb4890d9841",
-        "input": {
-            "human_img": human_b64,
-            "garm_img": garment_b64,
-            "category": category,
-            "garment_des": "a high quality fashion garment"
-        }
-    }
-
-    print("[Replicate] Initializing prediction on Replicate cloud API...")
-    try:
-        req = urllib.request.Request(
-            "https://api.replicate.com/v1/predictions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers=headers,
-            method="POST"
-        )
-        with urllib.request.urlopen(req) as res:
-            pred = json.loads(res.read().decode("utf-8"))
-            pred_id = pred["id"]
-
-        status_url = f"https://api.replicate.com/v1/predictions/{pred_id}"
-        req_status = urllib.request.Request(status_url, headers=headers)
-
-        print(f"[Replicate] Prediction ID: {pred_id}. Waiting for completion...")
-        for i in range(45):
-            time.sleep(2.0)
-            with urllib.request.urlopen(req_status) as res:
-                pred = json.loads(res.read().decode("utf-8"))
-                status = pred["status"]
-                print(f"[Replicate] Status: {status} ({i+1}/45)")
-                if status == "succeeded":
-                    output_url = pred["output"]
-                    if isinstance(output_url, list):
-                        output_url = output_url[0]
-                    print(f"[Replicate] Render success! Downloading output...")
-                    with urllib.request.urlopen(output_url) as img_res:
-                        return img_res.read()
-                elif status in ["failed", "canceled"]:
-                    print(f"[Replicate] Prediction failed: {pred.get('error')}")
-                    break
-    except Exception as e:
-        print(f"[Replicate] API communication error: {e}")
-    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

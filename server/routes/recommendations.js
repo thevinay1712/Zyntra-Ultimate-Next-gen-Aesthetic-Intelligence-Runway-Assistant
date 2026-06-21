@@ -5,15 +5,15 @@ const fetch = require('node-fetch');
 
 const router = express.Router();
 
-// GET /api/recommend — Fetch local matching rules suggestions
 router.get('/', auth, async (req, res) => {
   try {
-    const { occasion = 'casual', season, limit = 5 } = req.query;
+    const { occasion = 'casual', season, limit = 5, temp } = req.query;
 
     const recommendations = await generateRecommendations(req.userId, {
       occasion,
       season,
       limit: parseInt(limit),
+      temp: temp ? parseFloat(temp) : undefined,
     });
 
     res.json({ recommendations });
@@ -93,6 +93,18 @@ Stylist Critique:
     // Clean up any trailing chat markers if returned by model
     critiqueText = critiqueText.replace(/<\|eot_id\|>|Assistant:|Stylist Critique:/gi, '').trim();
 
+    // Strictly limit sentences and words to prevent walls of text
+    let sentences = critiqueText.match(/[^.!?]+[.!?]+/g) || [critiqueText];
+    if (sentences.length > 2) {
+      sentences = sentences.slice(0, 2);
+    }
+    critiqueText = sentences.join(' ').trim();
+
+    const wordsList = critiqueText.split(/\s+/);
+    if (wordsList.length > 50) {
+      critiqueText = wordsList.slice(0, 50).join(' ') + '...';
+    }
+
     res.json({ critique: critiqueText });
   } catch (err) {
     console.error('LLM Stylist API error:', err.message);
@@ -103,6 +115,14 @@ Stylist Critique:
 // Helper for local validation & template fallback
 const runLocalValidation = (destination, temp, condition, season) => {
   const query = destination.toLowerCase().trim();
+
+  // 0. Length check to prevent layout issues or database overload
+  if (query.length > 80) {
+    return {
+      valid: false,
+      message: "Please enter a shorter, more specific location (maximum 80 characters)."
+    };
+  }
   
   // 1. Off-topic/inappropriate location keywords
   const offTopicKeywords = ['toilet', 'bathroom', 'restroom', 'washroom', 'wc', 'poop', 'pee', 'shit', 'urinal', 'garbage', 'trash', 'dumpster', 'sewer', 'sewage', 'lavatory', 'commode'];
@@ -118,13 +138,30 @@ const runLocalValidation = (destination, temp, condition, season) => {
     };
   }
 
-  // 2. Gibberish detection rules:
-  // - Check for words > 3 characters with 0 vowels
+  // 2. Letters check - must have at least 2 letters
+  const letterCount = (query.match(/[a-zA-Z]/g) || []).length;
+  if (letterCount < 2) {
+    return {
+      valid: false,
+      message: `"${destination}" does not contain a valid location name. Please enter a real location or activity containing alphabetical letters.`
+    };
+  }
+
+  // 3. Vowelless check across the whole query
+  const hasAnyVowel = /[aeiouy]/i.test(query);
+  if (!hasAnyVowel) {
+    return {
+      valid: false,
+      message: `"${destination}" seems to be gibberish or unrecognized. Please enter a real location or activity.`
+    };
+  }
+
+  // 4. Gibberish check on individual words (cleaning special characters first)
   const words = query.split(/\s+/);
   for (const word of words) {
-    // Only check if it's purely letters
-    if (/^[a-zA-Z]+$/.test(word) && word.length > 3) {
-      const hasVowels = /[aeiouy]/i.test(word);
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+    if (cleanWord.length >= 2) {
+      const hasVowels = /[aeiouy]/i.test(cleanWord);
       if (!hasVowels) {
         return {
           valid: false,
@@ -134,7 +171,7 @@ const runLocalValidation = (destination, temp, condition, season) => {
     }
   }
 
-  // - Too many repeated consecutive characters (e.g. "aaaaa", "ssdfg" etc)
+  // 5. Too many repeated characters check
   if (/(.)\1{3,}/.test(query)) {
     return {
       valid: false,
@@ -142,26 +179,29 @@ const runLocalValidation = (destination, temp, condition, season) => {
     };
   }
 
-  // - Random key smash strings (consonant clusters longer than 4 chars e.g. "sdfgh", "rtgfd")
-  const consonantClusters = query.match(/[^aeiouy\s]{5,}/g);
-  if (consonantClusters) {
-    return {
-      valid: false,
-      message: `"${destination}" contains unrecognized consonant combinations. Please enter a real location or activity.`
-    };
+  // 6. Consonant clusters check within individual words
+  for (const word of words) {
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+    const hasCluster = /[^aeiouy]{5,}/i.test(cleanWord);
+    if (hasCluster) {
+      return {
+        valid: false,
+        message: `"${destination}" contains unrecognized consonant combinations. Please enter a real location or activity.`
+      };
+    }
   }
 
-  // 3. Simple classification based on keyword matching
+  // 7. Simple classification based on keyword matching
   let category = 'casual';
-  if (query.includes('office') || query.includes('work') || query.includes('business') || query.includes('meeting') || query.includes('interview') || query.includes('conference') || query.includes('formal') || query.includes('suit')) {
-    category = 'formal';
-  } else if (query.includes('gym') || query.includes('workout') || query.includes('run') || query.includes('sport') || query.includes('active') || query.includes('train') || query.includes('trek') || query.includes('hike') || query.includes('climb') || query.includes('football') || query.includes('soccer') || query.includes('fit')) {
+  if (query.includes('gym') || query.includes('workout') || query.includes('run') || query.includes('sport') || query.includes('active') || query.includes('train') || query.includes('trek') || query.includes('hike') || query.includes('climb') || query.includes('football') || query.includes('soccer') || query.includes('fit')) {
     category = 'sport';
+  } else if (query.includes('office') || query.includes('work') || query.includes('business') || query.includes('meeting') || query.includes('interview') || query.includes('conference') || query.includes('formal') || query.includes('suit')) {
+    category = 'formal';
   } else if (query.includes('party') || query.includes('club') || query.includes('night') || query.includes('bar') || query.includes('pub') || query.includes('celebrat') || query.includes('festive') || query.includes('dance') || query.includes('concert')) {
     category = 'party';
   }
 
-  // 4. Generate dynamic template-based advice
+  // 8. Generate dynamic template-based advice
   let advice = '';
   const parsedTemp = parseFloat(temp) || 22;
   const isCold = parsedTemp < 15;

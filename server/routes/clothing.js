@@ -195,7 +195,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       userId: req.userId,
       name,
       category,
-      subcategory: subcategory || '',
+      subcategory: subcategory || detectedItemType || '',
       color: colorData,
       season,
       occasion,
