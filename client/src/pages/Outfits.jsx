@@ -428,7 +428,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Top */}
           {currentOutfit.top && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.top.imageUrl}`}
+              src={`${currentOutfit.top.imageUrl}`}
               alt="top overlay"
               className="overlay-clothes top-clothes animate-fade-in-scale"
               style={{
@@ -439,7 +439,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Bottom */}
           {currentOutfit.bottom && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.bottom.imageUrl}`}
+              src={`${currentOutfit.bottom.imageUrl}`}
               alt="bottom overlay"
               className="overlay-clothes bottom-clothes animate-fade-in-scale"
               style={{
@@ -450,7 +450,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Outerwear */}
           {currentOutfit.outerwear && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.outerwear.imageUrl}`}
+              src={`${currentOutfit.outerwear.imageUrl}`}
               alt="outerwear overlay"
               className="overlay-clothes outerwear-clothes animate-fade-in-scale"
               style={{
@@ -461,7 +461,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Shoes */}
           {currentOutfit.shoes && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.shoes.imageUrl}`}
+              src={`${currentOutfit.shoes.imageUrl}`}
               alt="shoes overlay"
               className="overlay-clothes shoes-clothes animate-fade-in-scale"
               style={{
@@ -472,7 +472,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Accessory */}
           {currentOutfit.accessory && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.accessory.imageUrl}`}
+              src={`${currentOutfit.accessory.imageUrl}`}
               alt="accessory overlay"
               className="overlay-clothes accessory-clothes animate-fade-in-scale"
               style={{
@@ -732,7 +732,7 @@ export default function Outfits() {
                     >
                       {item ? (
                         <>
-                          <img src={`http://localhost:5000${item.imageUrl}`} alt={slot.label} className="slot-img" />
+                          <img src={`${item.imageUrl}`} alt={slot.label} className="slot-img" />
                           <button className="btn btn-icon slot-remove" onClick={(e) => handleClearSlot(slot.id, e)}>
                             <IconX />
                           </button>
@@ -839,7 +839,7 @@ export default function Outfits() {
                           if (!c) return null;
                           return (
                             <div key={i} className="mini-item">
-                              <img src={`http://localhost:5000${c.imageUrl}`} alt="item" />
+                              <img src={`${c.imageUrl}`} alt="item" />
                             </div>
                           );
                         })}

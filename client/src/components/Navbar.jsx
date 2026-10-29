@@ -18,8 +18,14 @@ const IconCpu = () => (
 const IconLogOut = () => (
   <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
 );
-const IconUser = () => (
-  <svg viewBox="0 0 24 24" className="icon icon-sm"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+const IconGlassesAR = () => (
+  <svg viewBox="0 0 24 24" className="icon icon-sm" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 10h4a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10z" />
+    <path d="M16 10h4a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V10z" />
+    <path d="M8 12h8" />
+    <path d="M4 10V6" />
+    <path d="M20 10V6" />
+  </svg>
 );
 
 export default function Navbar() {
@@ -31,7 +37,7 @@ export default function Navbar() {
     { path: '/upload', label: 'Upload', Icon: IconCamera },
     { path: '/outfits', label: 'Outfits', Icon: IconSparkles },
     { path: '/recommend', label: 'AI Stylist', Icon: IconCpu },
-    { path: '/avatar', label: 'Try-On', Icon: IconUser },
+    { path: '/avatar', label: 'AR Try-On', Icon: IconGlassesAR },
   ];
 
   return (
@@ -44,33 +50,38 @@ export default function Navbar() {
 
         <div className="navbar-links">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (item.path === '/avatar' && location.pathname === '/tryon');
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`nav-link ${isActive ? 'active' : ''}`}
-                id={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
+                id={`nav-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
               >
                 <item.Icon />
-                <span className="nav-label">{item.label}</span>
-                {isActive && <div className="nav-active-indicator" />}
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </div>
 
-        <div className="navbar-user">
-          {user?.name && (
-            <span className="navbar-greeting">Hi, {user.name.split(' ')[0]} 👋</span>
+        <div className="navbar-actions">
+          {user && (
+            <div className="user-profile">
+              <span className="user-greeting">Hi, {user.name}</span>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={logout}
+                id="btn-logout"
+                title="Log out"
+              >
+                <IconLogOut />
+                <span>Logout</span>
+              </button>
+            </div>
           )}
-          <button className="btn btn-ghost btn-icon" onClick={logout} id="btn-logout" title="Log out">
-            <IconLogOut />
-          </button>
         </div>
       </div>
     </nav>
   );
 }
-
-

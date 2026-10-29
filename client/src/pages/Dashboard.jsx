@@ -227,7 +227,7 @@ export default function Dashboard() {
             <h3 className="form-section-title" style={{ marginTop: 0 }}>Edit Item</h3>
             
             <div className="modal-item-preview">
-              <img src={`http://localhost:5000${editingItem.imageUrl}`} alt="Preview" />
+              <img src={`${editingItem.imageUrl}`} alt="Preview" />
             </div>
 
             <form onSubmit={handleEditSubmit} className="edit-form">
