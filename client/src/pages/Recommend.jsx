@@ -472,7 +472,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Top */}
           {currentOutfit.top && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.top.imageUrl}`}
+              src={`${currentOutfit.top.imageUrl}`}
               alt="top overlay"
               className="overlay-clothes top-clothes animate-fade-in-scale"
               style={{
@@ -484,7 +484,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Bottom */}
           {currentOutfit.bottom && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.bottom.imageUrl}`}
+              src={`${currentOutfit.bottom.imageUrl}`}
               alt="bottom overlay"
               className="overlay-clothes bottom-clothes animate-fade-in-scale"
               style={{
@@ -495,7 +495,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Outerwear */}
           {currentOutfit.outerwear && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.outerwear.imageUrl}`}
+              src={`${currentOutfit.outerwear.imageUrl}`}
               alt="outerwear overlay"
               className="overlay-clothes outerwear-clothes animate-fade-in-scale"
               style={{
@@ -506,7 +506,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Shoes */}
           {currentOutfit.shoes && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.shoes.imageUrl}`}
+              src={`${currentOutfit.shoes.imageUrl}`}
               alt="shoes overlay"
               className="overlay-clothes shoes-clothes animate-fade-in-scale"
               style={{
@@ -517,7 +517,7 @@ function RenderAvatarVector({ styleProps, rotation = 0, currentOutfit = null, fi
           {/* Accessory */}
           {currentOutfit.accessory && (
             <DressingItemImage
-              src={`http://localhost:5000${currentOutfit.accessory.imageUrl}`}
+              src={`${currentOutfit.accessory.imageUrl}`}
               alt="accessory overlay"
               className="overlay-clothes accessory-clothes animate-fade-in-scale"
               style={{
@@ -1831,7 +1831,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                           <span className="rec-item-label">{slot}</span>
                           <div className="rec-item-img-wrap" style={{ borderColor: rec.items[slot].color?.primary || 'var(--border-subtle)' }}>
                             <DressingItemImage
-                              src={`http://localhost:5000${rec.items[slot].imageUrl}`}
+                              src={`${rec.items[slot].imageUrl}`}
                               alt={rec.items[slot].name || slot}
                               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                             />
@@ -2062,7 +2062,7 @@ This combination scores a remarkable ${topOutfit.score}% Style Match based on co
                             <div key={item._id} className="similarity-card glass-card" style={{ flex: '0 0 130px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
                               <div className="similarity-card-img-wrap" style={{ width: '100%', height: '80px', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0,0,0,0.2)', border: '1px solid transparent', borderColor: item.color?.primary || 'transparent', padding: '4px' }}>
                                 <DressingItemImage 
-                                  src={`http://localhost:5000${item.imageUrl}`} 
+                                  src={`${item.imageUrl}`} 
                                   alt={item.name} 
                                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />

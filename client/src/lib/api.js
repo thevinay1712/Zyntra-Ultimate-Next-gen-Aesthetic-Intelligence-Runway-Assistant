@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`;
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+export const getImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return url.startsWith('/') ? url : `/${url}`;
+};
 
 const api = axios.create({
   baseURL: API_BASE,

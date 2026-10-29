@@ -33,7 +33,7 @@ export default function ClothingCard({ item, onDelete, onEdit, selectable, selec
         {!imageLoaded && <div className="card-image-skeleton skeleton" />}
         
         <img
-          src={`http://localhost:5000${item.imageUrl}`}
+          src={`${item.imageUrl}`}
           alt={item.name}
           className={`card-image ${imageLoaded ? 'loaded' : ''}`}
           onLoad={() => setImageLoaded(true)}
