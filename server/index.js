@@ -42,7 +42,7 @@ app.use('/api/tryon', tryOnRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', name: 'Zyntra – AI Wardrobe & Outfit Stylist', version: '1.0.0', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', name: 'Zyntra', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
 // Serve static client assets in production
