@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/db');
 
 // Import routes
@@ -43,6 +44,18 @@ app.use('/api/tryon', tryOnRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', name: 'Zyntra – AI Wardrobe & Outfit Stylist', version: '1.0.0', timestamp: new Date().toISOString() });
 });
+
+// Serve static client assets in production
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ message: 'API route not found' });
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

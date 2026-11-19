@@ -1,4 +1,13 @@
 {
+  "name": "zyntra-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "start": "node server/index.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev"
+  },
   "dependencies": {
     "dotenv": "^17.4.2"
   }
