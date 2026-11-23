@@ -152,6 +152,131 @@ const DEFAULT_PRESETS = {
         <path d="M270,90 Q290,130 310,90" fill="none" stroke="#f59e0b" stroke-width="2" />
       </svg>`
     }
+  ],
+  accessories: [
+    {
+      _id: 'preset_acc_1',
+      name: 'Cyberpunk Aviator Neon Sunglasses',
+      category: 'glasses',
+      anchor: 'face',
+      color: { primary: '#00f0ff' },
+      isSvgData: true,
+      svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="100%" height="100%">
+        <defs>
+          <linearGradient id="lensGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.85" />
+            <stop offset="100%" stop-color="#7928ca" stop-opacity="0.85" />
+          </linearGradient>
+          <linearGradient id="frameGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#fbbf24" />
+            <stop offset="100%" stop-color="#f59e0b" />
+          </linearGradient>
+        </defs>
+        <path d="M40,55 L460,55" stroke="url(#frameGrad1)" stroke-width="8" stroke-linecap="round"/>
+        <path d="M210,85 Q250,70 290,85" fill="none" stroke="url(#frameGrad1)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M60,65 L200,65 C220,120 180,175 110,165 C65,160 45,120 60,65 Z" fill="url(#lensGrad1)" stroke="url(#frameGrad1)" stroke-width="8" />
+        <path d="M300,65 L440,65 C455,120 435,160 390,165 C320,175 280,120 300,65 Z" fill="url(#lensGrad1)" stroke="url(#frameGrad1)" stroke-width="8" />
+        <line x1="80" y1="80" x2="140" y2="80" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+        <line x1="320" y1="80" x2="380" y2="80" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+        <circle cx="45" cy="55" r="7" fill="#fbbf24" />
+        <circle cx="455" cy="55" r="7" fill="#fbbf24" />
+      </svg>`
+    },
+    {
+      _id: 'preset_acc_2',
+      name: 'Matrix Dark Stealth Sunglasses',
+      category: 'glasses',
+      anchor: 'face',
+      color: { primary: '#10b981' },
+      isSvgData: true,
+      svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="100%" height="100%">
+        <defs>
+          <linearGradient id="stealthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a" />
+            <stop offset="100%" stop-color="#020617" />
+          </linearGradient>
+        </defs>
+        <path d="M200,100 L300,100" stroke="#334155" stroke-width="6" />
+        <ellipse cx="130" cy="100" rx="85" ry="38" fill="url(#stealthGrad)" stroke="#10b981" stroke-width="4" />
+        <ellipse cx="370" cy="100" rx="85" ry="38" fill="url(#stealthGrad)" stroke="#10b981" stroke-width="4" />
+        <path d="M50,100 Q130,135 210,100" fill="none" stroke="#10b981" stroke-width="3" opacity="0.7"/>
+        <path d="M290,100 Q370,135 450,100" fill="none" stroke="#10b981" stroke-width="3" opacity="0.7"/>
+      </svg>`
+    },
+    {
+      _id: 'preset_acc_3',
+      name: 'Obsidian Streetwear Snapback Cap',
+      category: 'headwear',
+      anchor: 'head',
+      color: { primary: '#1e293b' },
+      isSvgData: true,
+      svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300" width="100%" height="100%">
+        <defs>
+          <linearGradient id="capDomeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#334155" />
+            <stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
+          <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a" />
+            <stop offset="100%" stop-color="#020617" />
+          </linearGradient>
+        </defs>
+        <path d="M80,220 C80,60 420,60 420,220 Z" fill="url(#capDomeGrad)" stroke="#475569" stroke-width="5" />
+        <path d="M250,60 L250,220" stroke="#475569" stroke-width="3" stroke-dasharray="6 4" />
+        <ellipse cx="250" cy="60" rx="14" ry="7" fill="#00f0ff" stroke="#ffffff" stroke-width="2" />
+        <path d="M50,215 C100,265 400,265 450,215 C410,210 90,210 50,215 Z" fill="url(#visorGrad)" stroke="#00f0ff" stroke-width="4" />
+        <rect x="210" y="140" width="80" height="35" rx="6" fill="#00f0ff" opacity="0.9" />
+        <text x="250" y="163" fill="#0f172a" font-family="'Space Grotesk', sans-serif" font-size="14" font-weight="900" text-anchor="middle" letter-spacing="2">ZYNTRA</text>
+      </svg>`
+    },
+    {
+      _id: 'preset_acc_4',
+      name: '18K Gold Chronograph Watch',
+      category: 'wrist',
+      anchor: 'wrist',
+      color: { primary: '#f59e0b' },
+      isSvgData: true,
+      svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%">
+        <defs>
+          <linearGradient id="goldCase" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fde68a" />
+            <stop offset="50%" stop-color="#f59e0b" />
+            <stop offset="100%" stop-color="#b45309" />
+          </linearGradient>
+          <radialGradient id="dialFace" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#020617" />
+          </radialGradient>
+        </defs>
+        <rect x="110" y="10" width="80" height="280" rx="12" fill="url(#goldCase)" stroke="#78350f" stroke-width="3" />
+        <circle cx="150" cy="150" r="75" fill="url(#goldCase)" stroke="#78350f" stroke-width="4" />
+        <circle cx="150" cy="150" r="58" fill="url(#dialFace)" stroke="#f59e0b" stroke-width="2" />
+        <line x1="150" y1="150" x2="150" y2="110" stroke="#fef08a" stroke-width="3.5" stroke-linecap="round" />
+        <line x1="150" y1="150" x2="180" y2="160" stroke="#fef08a" stroke-width="3" stroke-linecap="round" />
+        <circle cx="150" cy="150" r="4" fill="#ef4444" />
+      </svg>`
+    },
+    {
+      _id: 'preset_acc_5',
+      name: 'Miami Cuban Link Gold Chain',
+      category: 'neck',
+      anchor: 'neck',
+      color: { primary: '#eab308' },
+      isSvgData: true,
+      svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300" width="100%" height="100%">
+        <defs>
+          <linearGradient id="chainGold" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#fbbf24" />
+            <stop offset="50%" stop-color="#fef08a" />
+            <stop offset="100%" stop-color="#d97706" />
+          </linearGradient>
+        </defs>
+        <path d="M120,40 Q250,260 380,40" fill="none" stroke="url(#chainGold)" stroke-width="16" stroke-linecap="round" stroke-dasharray="18 10" />
+        <path d="M160,40 Q250,210 340,40" fill="none" stroke="url(#chainGold)" stroke-width="10" stroke-linecap="round" stroke-dasharray="14 8" />
+        <polygon points="250,225 270,250 250,275 230,250" fill="#00f0ff" stroke="#ffffff" stroke-width="2" />
+        <circle cx="250" cy="250" r="4" fill="#ffffff" />
+      </svg>`
+    }
   ]
 };
 
@@ -166,6 +291,7 @@ export default function Avatar({ initialOutfit = null }) {
   const [userItems, setUserItems] = useState([]);
   const [selectedTop, setSelectedTop] = useState(DEFAULT_PRESETS.tops[0]);
   const [selectedBottom, setSelectedBottom] = useState(DEFAULT_PRESETS.bottoms[0]);
+  const [selectedAccessory, setSelectedAccessory] = useState(DEFAULT_PRESETS.accessories[0]);
 
   // AR Mirror Controls
   const [cameraActive, setCameraActive] = useState(false);
@@ -178,6 +304,8 @@ export default function Avatar({ initialOutfit = null }) {
   const [garmentScale, setGarmentScale] = useState(1.0);
   const [verticalOffset, setVerticalOffset] = useState(0);
   const [garmentOpacity, setGarmentOpacity] = useState(0.95);
+  const [accessoryScale, setAccessoryScale] = useState(1.0);
+  const [accessoryVerticalOffset, setAccessoryVerticalOffset] = useState(0);
   const [blendMode, setBlendMode] = useState('source-over'); // 'source-over' | 'multiply'
 
   // Live AR Telemetry Stats
@@ -335,6 +463,10 @@ export default function Avatar({ initialOutfit = null }) {
     const lAnkle    = getPt(27);
     const rAnkle    = getPt(28);
     const nose      = getPt(0);
+    const lEye      = getPt(2);
+    const rEye      = getPt(5);
+    const lEar      = getPt(7);
+    const rEar      = getPt(8);
 
     // Compute key structural metrics
     const shoulderDx = rShoulder.x - lShoulder.x;
@@ -350,7 +482,7 @@ export default function Avatar({ initialOutfit = null }) {
     const hipWidth = Math.hypot(hipDx, hipDy);
     const hipAngle = Math.atan2(hipDy, hipDx);
 
-    // ── 1. Render Virtual Garments (Top & Bottom) ──
+    // ── 1. Render Virtual Garments & Accessories ──
     ctx.globalCompositeOperation = blendMode;
 
     // A) Render BOTTOM (Pants / Jeans) first
@@ -399,6 +531,70 @@ export default function Avatar({ initialOutfit = null }) {
         ctx.shadowOffsetY = 6;
 
         ctx.drawImage(topImg, -topW / 2, -topH / 2, topW, topH);
+        ctx.restore();
+      }
+    }
+
+    // C) Render AR ACCESSORIES (Glasses, Snapback Cap, Watch, Chain)
+    if (selectedAccessory) {
+      const accImg = getLoadedImage(selectedAccessory);
+      if (accImg && accImg.complete && accImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = garmentOpacity;
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 14;
+
+        const cat = selectedAccessory.category;
+        const eyeDx = rEye.x - lEye.x;
+        const eyeDy = rEye.y - lEye.y;
+        const eyeDist = Math.max(Math.hypot(eyeDx, eyeDy), shoulderWidth * 0.22, 35);
+        const headAngle = Math.atan2(eyeDy, eyeDx);
+        const eyeCenter = { x: (lEye.x + rEye.x) / 2, y: (lEye.y + rEye.y) / 2 };
+
+        if (cat === 'glasses') {
+          // Aviator / Sunglasses anchored directly to the eye center and nose bridge
+          const glassW = eyeDist * 2.65 * accessoryScale;
+          const glassH = glassW * 0.42;
+          const glassCenter = {
+            x: eyeCenter.x,
+            y: eyeCenter.y + accessoryVerticalOffset
+          };
+
+          ctx.translate(glassCenter.x, glassCenter.y);
+          ctx.rotate(headAngle);
+          ctx.drawImage(accImg, -glassW / 2, -glassH / 2, glassW, glassH);
+        } else if (cat === 'headwear') {
+          // Snapback Cap / Beanie anchored above forehead
+          const capW = eyeDist * 3.4 * accessoryScale;
+          const capH = capW * 0.62;
+          const capCenter = {
+            x: eyeCenter.x,
+            y: eyeCenter.y - eyeDist * 0.95 + accessoryVerticalOffset
+          };
+
+          ctx.translate(capCenter.x, capCenter.y);
+          ctx.rotate(headAngle);
+          ctx.drawImage(accImg, -capW / 2, -capH / 2, capW, capH);
+        } else if (cat === 'wrist') {
+          // Chronograph Watch anchored to left wrist (15) and oriented with forearm (13->15)
+          const armDx = lWrist.x - lElbow.x;
+          const armDy = lWrist.y - lElbow.y;
+          const armAngle = Math.atan2(armDy, armDx);
+          const watchSize = Math.max(shoulderWidth * 0.35, 65) * accessoryScale;
+
+          ctx.translate(lWrist.x, lWrist.y + accessoryVerticalOffset);
+          ctx.rotate(armAngle);
+          ctx.drawImage(accImg, -watchSize / 2, -watchSize / 2, watchSize, watchSize);
+        } else if (cat === 'neck') {
+          // Cuban Link Chain draped across collarbones
+          const neckW = shoulderWidth * 0.9 * accessoryScale;
+          const neckH = neckW * 0.65;
+
+          ctx.translate(shoulderCenter.x, shoulderCenter.y + accessoryVerticalOffset);
+          ctx.rotate(torsoAngle);
+          ctx.drawImage(accImg, -neckW / 2, -neckH / 2, neckW, neckH);
+        }
+
         ctx.restore();
       }
     }
@@ -482,7 +678,7 @@ export default function Avatar({ initialOutfit = null }) {
 
     ctx.restore();
     ctx.restore();
-  }, [selectedTop, selectedBottom, showSkeleton, garmentScale, verticalOffset, garmentOpacity, blendMode, fps, getLoadedImage]);
+  }, [selectedTop, selectedBottom, selectedAccessory, showSkeleton, garmentScale, verticalOffset, garmentOpacity, accessoryScale, accessoryVerticalOffset, blendMode, fps, getLoadedImage]);
 
   // ── Initialize MediaPipe Pose Model & Camera ──
   const startCamera = async () => {
@@ -514,8 +710,20 @@ export default function Avatar({ initialOutfit = null }) {
       poseInstanceRef.current = pose;
 
       // 2. Stream User Camera (requires Secure Context / HTTPS on mobile)
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Mobile browsers require HTTPS to access the camera. Please open https://" + (window.location.hostname || '192.168.29.217') + ":5173");
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isHttps = window.location.protocol === 'https:';
+
+      if (!isHttps && !isLocalhost && !navigator?.mediaDevices) {
+        const secureUrl = window.location.href.replace('http:', 'https:');
+        throw new Error(
+          `Mobile browsers strictly require HTTPS for camera. Please open: ${secureUrl}`
+        );
+      }
+
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Camera API is unavailable. Mobile browsers disable camera on insecure HTTP. Please switch to HTTPS."
+        );
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -638,8 +846,17 @@ export default function Avatar({ initialOutfit = null }) {
       // Synthetic pose landmarks simulating a runway model walking/breathing
       const syntheticResults = {
         poseLandmarks: [
-          { x: 0.5 + sway * 0.5, y: 0.18 + breathe, z: 0, visibility: 0.99 }, // 0: Nose
-          ...Array(10).fill({ x: 0.5, y: 0.2, visibility: 0.5 }),
+          { x: 0.5 + sway * 0.5, y: 0.18 + breathe, z: 0, visibility: 0.99 },   // 0: Nose
+          { x: 0.52 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 1: L Eye Inner
+          { x: 0.54 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 2: L Eye
+          { x: 0.56 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 3: L Eye Outer
+          { x: 0.48 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 4: R Eye Inner
+          { x: 0.46 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 5: R Eye
+          { x: 0.44 + sway * 0.5, y: 0.16 + breathe, z: 0, visibility: 0.99 },  // 6: R Eye Outer
+          { x: 0.58 + sway * 0.5, y: 0.17 + breathe, z: 0, visibility: 0.99 },  // 7: L Ear
+          { x: 0.42 + sway * 0.5, y: 0.17 + breathe, z: 0, visibility: 0.99 },  // 8: R Ear
+          { x: 0.52 + sway * 0.5, y: 0.22, z: 0, visibility: 0.95 },            // 9: Mouth Left
+          { x: 0.48 + sway * 0.5, y: 0.22, z: 0, visibility: 0.95 },            // 10: Mouth Right
           { x: 0.62 + sway, y: 0.28 + breathe, z: -0.05, visibility: 0.98 }, // 11: L Shoulder
           { x: 0.38 + sway, y: 0.28 + breathe, z: 0.05, visibility: 0.98 },  // 12: R Shoulder
           { x: 0.68 + sway, y: 0.44, z: 0, visibility: 0.95 },               // 13: L Elbow
@@ -718,8 +935,11 @@ export default function Avatar({ initialOutfit = null }) {
     success('Runway Look snapshot captured & saved!');
   };
 
-  // Mobile AR URL
-  const mobileArUrl = `${window.location.protocol}//${mobileIp}:${window.location.port || '5173'}/avatar`;
+  // Mobile AR URL (Ensures HTTPS for iOS Safari / Android Chrome WebRTC security)
+  const isLocalOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const effectiveProtocol = !isLocalOrigin ? 'https:' : (window.location.protocol || 'https:');
+  const portStr = window.location.port ? `:${window.location.port}` : ':5173';
+  const mobileArUrl = `${effectiveProtocol}//${mobileIp}${portStr}/avatar`;
 
   return (
     <div className="ar-studio-page container">
@@ -757,8 +977,34 @@ export default function Avatar({ initialOutfit = null }) {
             <span className="tab-icon">📱</span>
             <span>Room-Scale 3D Hologram</span>
           </button>
+          <button
+            className={`ar-tab-btn ${activeTab === 'unity_companion' ? 'active' : ''}`}
+            onClick={() => {
+              stopCamera();
+              setActiveTab('unity_companion');
+            }}
+          >
+            <span className="tab-icon">🎮</span>
+            <span>Unity AR Engine</span>
+          </button>
         </div>
       </header>
+
+      {/* ── Secure Context / HTTPS Mobile Banner ── */}
+      {typeof window !== 'undefined' && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+        <div className="ar-https-banner animate-fade-in">
+          <div className="ar-https-banner-content">
+            <strong>🔒 Mobile Camera Strictly Requires HTTPS (Secure Context)</strong>
+            <p>iOS Safari and mobile Chrome block camera access on plain HTTP. Tap to switch to secure HTTPS:</p>
+          </div>
+          <a
+            href={window.location.href.replace('http:', 'https:')}
+            className="btn btn-warning btn-sm"
+          >
+            ⚡ Open in Secure HTTPS
+          </a>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════════
           TAB 1: LIVE WEBAR MAGIC RUNWAY MIRROR (IDEA 1)
@@ -910,6 +1156,36 @@ export default function Avatar({ initialOutfit = null }) {
                 />
               </div>
 
+              <div className="slider-item">
+                <div className="slider-label">
+                  <span>Accessory Scale</span>
+                  <span className="slider-val">{Math.round(accessoryScale * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.7"
+                  max="1.4"
+                  step="0.05"
+                  value={accessoryScale}
+                  onChange={(e) => setAccessoryScale(parseFloat(e.target.value))}
+                />
+              </div>
+
+              <div className="slider-item">
+                <div className="slider-label">
+                  <span>Accessory Height Offset</span>
+                  <span className="slider-val">{accessoryVerticalOffset}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="-40"
+                  max="40"
+                  step="2"
+                  value={accessoryVerticalOffset}
+                  onChange={(e) => setAccessoryVerticalOffset(parseInt(e.target.value))}
+                />
+              </div>
+
               <div className="blend-mode-picker">
                 <span className="sub-label">Fabric Blend Shading:</span>
                 <div className="btn-toggle-group">
@@ -985,6 +1261,34 @@ export default function Avatar({ initialOutfit = null }) {
                   ))}
               </div>
             </div>
+
+            {/* 3. AR Accessories Selector */}
+            <div className="control-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h3 className="control-group-title" style={{ margin: 0 }}>🕶️ AR Accessories (Face & Wrists)</h3>
+                {selectedAccessory && (
+                  <button 
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: '0.72rem', padding: '2px 8px', color: '#94a3b8' }}
+                    onClick={() => setSelectedAccessory(null)}
+                  >
+                    Clear (None)
+                  </button>
+                )}
+              </div>
+              <div className="garment-pills-scroll">
+                {DEFAULT_PRESETS.accessories.map((acc) => (
+                  <button
+                    key={acc._id}
+                    className={`garment-pill-btn ${selectedAccessory?._id === acc._id ? 'active' : ''}`}
+                    onClick={() => setSelectedAccessory(acc)}
+                  >
+                    <span className="pill-dot" style={{ background: acc.color?.primary }} />
+                    <span className="pill-name">{acc.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </aside>
         </div>
       )}
@@ -1043,6 +1347,9 @@ export default function Avatar({ initialOutfit = null }) {
               <h3 className="control-group-title">👗 3D Garment Geometry</h3>
               <div className="model-choice-list">
                 {[
+                  { label: "🕶️ 3D Aviator Sunglasses", path: '/models/sunglasses.glb' },
+                  { label: "🧢 3D Streetwear Snapback Cap", path: '/models/cap.glb' },
+                  { label: "⌚ 3D Luxury Chronograph Watch", path: '/models/watch.glb' },
                   { label: "Men's Runway T-Shirt", path: '/models/male_tshirt_template.glb' },
                   { label: "Women's Fitted Tee", path: '/models/female_tshirt_template.glb' },
                   { label: "Men's Relaxed Jeans", path: '/models/male_jeans_template.glb' },
@@ -1093,6 +1400,105 @@ export default function Avatar({ initialOutfit = null }) {
                 <div className="guide-step">
                   <span className="step-num">3</span>
                   <p>A 1:1 human-scale model appears. Walk 360° around it to inspect the fit and drape!</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          TAB 3: UNITY AR ENGINE & 3D PIPELINE COMPANION (VR/AR SYLLABUS)
+      ══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'unity_companion' && (
+        <div className="ar-unity-layout">
+          <div className="unity-viewport-card glass-card">
+            <div className="unity-header-bar">
+              <div>
+                <h3 className="font-heading" style={{ margin: 0, fontSize: '1.25rem' }}>
+                  Unity AR Foundation & Blender 3D Engine
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Active Module: <code>unity-ar/</code> • ARCore / ARKit XR Plug-in Pipeline
+                </p>
+              </div>
+              <div className="unity-badge-row">
+                <span className="unity-badge" style={{ borderColor: '#00f0ff', color: '#00f0ff' }}>AR Foundation 5.x</span>
+                <span className="unity-badge" style={{ borderColor: '#10b981', color: '#10b981' }}>Universal RP</span>
+                <span className="unity-badge">Face Tracking API</span>
+              </div>
+            </div>
+
+            {/* Interactive 3D Turntable Preview Box */}
+            <div className="unity-stage-container">
+              <model-viewer
+                src={selectedModel}
+                camera-controls
+                auto-rotate
+                shadow-intensity="1.8"
+                environment-image="neutral"
+                exposure="1.2"
+                alt="Unity 3D Asset Preview"
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+
+            {/* Architecture Telemetry & Bridge Status */}
+            <div className="unity-code-snippet">
+              {`// C# WebBridge Message Dispatcher (unity-ar/Assets/Scripts/WebBridge.cs)
+[DllImport("__Internal")]
+private static extern void OnZyntraItemEquipped(string itemId, string category);
+
+public void EquipItem(string itemId) {
+    AccessoryManager.Instance?.EquipAccessory(itemId);
+    Debug.Log("[Unity AR] Equipped 3D Anchor: " + itemId);
+}`}
+            </div>
+          </div>
+
+          {/* Unity AR Project Control Sidebar */}
+          <aside className="ar-3d-sidebar glass-card">
+            <div className="control-group">
+              <h3 className="control-group-title">🎮 3D Prefabs & Asset Swap</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                Select an accessory to test real-time PBR material rendering and coordinate anchoring:
+              </p>
+              <div className="model-choice-list">
+                {[
+                  { label: "🕶️ Aviator Sunglasses (Face Anchor)", path: '/models/sunglasses.glb' },
+                  { label: "🧢 Streetwear Cap (Head Anchor)", path: '/models/cap.glb' },
+                  { label: "⌚ Chronograph Watch (Wrist Anchor)", path: '/models/watch.glb' },
+                  { label: "👕 Runway Cyberpunk Tee (Torso)", path: '/models/male_tshirt_template.glb' }
+                ].map((item) => (
+                  <button
+                    key={item.path}
+                    className={`model-select-btn ${selectedModel === item.path ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedModel(item.path);
+                      success(`Unity WebBridge: EquipItem -> ${item.label.split(' ')[1]}`);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {selectedModel === item.path && <span className="check-mark">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="control-group">
+              <h3 className="control-group-title">📦 Academic Exam Deliverables</h3>
+              <div className="ar-guide-box">
+                <div className="guide-step">
+                  <span className="step-num">1</span>
+                  <p><strong>40-Mark Internal:</strong> Blender <code>.blend</code> models, UV textures, and Unity project hierarchy under <code>unity-ar/</code>.</p>
+                </div>
+                <div className="guide-step">
+                  <span className="step-num">2</span>
+                  <p><strong>100-Mark Sem-End:</strong> Live AR Face & Pose tracking on Android APK + WebAR fallbacks with PBR shaders.</p>
+                </div>
+                <div className="guide-step">
+                  <span className="step-num">3</span>
+                  <p><strong>Viva Q&A:</strong> 25 verified academic defense answers in <code>VRAR_PROJECT_REPORT.md</code>.</p>
                 </div>
               </div>
             </div>
