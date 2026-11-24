@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const connectDB = require('./config/db');
+const os = require('os');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -32,6 +33,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Serve default try-on templates
 app.use('/models', express.static(path.join(__dirname, '..', 'VirtualTryOn', 'models')));
+
+// LAN IP endpoint for mobile AR QR code
+app.get('/api/network-ip', (req, res) => {
+  const interfaces = os.networkInterfaces();
+  let bestIp = '127.0.0.1';
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        if (net.address.startsWith('192.168.')) {
+          return res.json({ ip: net.address });
+        }
+        bestIp = net.address;
+      }
+    }
+  }
+  res.json({ ip: bestIp });
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);

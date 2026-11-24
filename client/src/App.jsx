@@ -41,8 +41,8 @@ function AppContent() {
         <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
         <Route path="/outfits" element={<ProtectedRoute><Outfits /></ProtectedRoute>} />
         <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
-        <Route path="/avatar" element={<ProtectedRoute><Avatar /></ProtectedRoute>} />
-        <Route path="/tryon" element={<ProtectedRoute><Avatar /></ProtectedRoute>} />
+        <Route path="/avatar" element={<Avatar />} />
+        <Route path="/tryon" element={<Avatar />} />
       </Routes>
       {!isLandingPage && (
         <footer className="app-footer">

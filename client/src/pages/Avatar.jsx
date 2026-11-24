@@ -320,7 +320,7 @@ export default function Avatar({ initialOutfit = null }) {
 
   // Local Wi-Fi Network IP for Mobile QR Scan
   const detectedLanIp = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? '192.168.29.217'
+    ? '192.168.29.42'
     : window.location.hostname;
   const [mobileIp, setMobileIp] = useState(detectedLanIp);
 
@@ -333,6 +333,28 @@ export default function Avatar({ initialOutfit = null }) {
   const lastFpsTimeRef = useRef(performance.now());
   const animationFrameRef = useRef(null);
   const cachedImagesRef = useRef({});
+
+  // ── Auto-sync LAN IP & Mobile QR Auth Handoff ──
+  useEffect(() => {
+    // 1. Mobile Scan Auth Handoff (auto-login on mobile if token passed in QR URL)
+    const params = new URLSearchParams(window.location.search);
+    const passedToken = params.get('auth_token');
+    if (passedToken && !localStorage.getItem('token')) {
+      localStorage.setItem('token', passedToken);
+      window.location.replace(window.location.pathname);
+      return;
+    }
+
+    // 2. Query backend for real host LAN IP
+    fetch('/api/network-ip')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.ip && data.ip !== '127.0.0.1' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          setMobileIp(data.ip);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Load User Closet Items safely ──
   useEffect(() => {
@@ -939,7 +961,8 @@ export default function Avatar({ initialOutfit = null }) {
   const isLocalOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const effectiveProtocol = !isLocalOrigin ? 'https:' : (window.location.protocol || 'https:');
   const portStr = window.location.port ? `:${window.location.port}` : ':5173';
-  const mobileArUrl = `${effectiveProtocol}//${mobileIp}${portStr}/avatar`;
+  const userToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const mobileArUrl = `${effectiveProtocol}//${mobileIp}${portStr}/avatar${userToken ? `?auth_token=${encodeURIComponent(userToken)}` : ''}`;
 
   return (
     <div className="ar-studio-page container">
@@ -1531,11 +1554,27 @@ public void EquipItem(string itemId) {
                   className="qr-lan-input"
                   value={mobileIp}
                   onChange={(e) => setMobileIp(e.target.value)}
-                  placeholder="e.g. 192.168.29.217"
+                  placeholder="e.g. 192.168.29.42"
                 />
               </div>
 
               <span className="qr-url-hint">Target URL: {mobileArUrl}</span>
+              
+              <div style={{
+                background: 'rgba(0, 240, 255, 0.08)',
+                border: '1px solid rgba(0, 240, 255, 0.25)',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                margin: '12px 0 6px 0',
+                fontSize: '0.78rem',
+                textAlign: 'left',
+                color: '#e2e8f0',
+                lineHeight: '1.4'
+              }}>
+                <strong style={{ color: '#00f0ff' }}>📱 When Opening on iPhone / Android:</strong><br />
+                If Safari says <em>"This Connection Is Not Private"</em>, tap <strong>"Show Details"</strong> (or Advanced) &rarr; tap <strong>"visit this website"</strong>. Camera permissions will prompt immediately!
+              </div>
+
               <p className="qr-wifi-note">
                 💡 Ensure your phone and computer are connected to the same Wi-Fi network.
               </p>
