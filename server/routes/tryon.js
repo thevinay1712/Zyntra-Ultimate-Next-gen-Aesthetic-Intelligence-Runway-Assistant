@@ -15,7 +15,7 @@ const crypto   = require('crypto');
 
 const router = express.Router();
 
-const AI_BASE      = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_BASE      = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
 const SERVER_BASE  = process.env.SERVER_BASE_URL || 'http://localhost:5000';
 const RESULTS_DIR  = path.join(__dirname, '..', 'uploads', 'tryon_results');
 

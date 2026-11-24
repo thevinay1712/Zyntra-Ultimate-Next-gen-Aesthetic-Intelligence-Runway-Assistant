@@ -104,10 +104,22 @@ async def api_analyze_clothing(
         if img_bgr is None:
             raise HTTPException(status_code=400, detail="Invalid image file. Make sure you upload a standard JPG/PNG.")
 
-        # 1. Segment garment to isolate foreground clothes
+        # 1. Segment garment to isolate foreground clothes (skip re-segmenting if already isolated with alpha)
         try:
-            segmented_bytes, cv2_img_bgra, alpha_mask = segment_garment(contents)
-            img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
+            pil_check = Image.open(io.BytesIO(contents))
+            if pil_check.mode in ("RGBA", "LA") or (pil_check.mode == "P" and "transparency" in pil_check.info):
+                pil_rgba = pil_check.convert("RGBA")
+                cv2_img_bgra = cv2.cvtColor(np.array(pil_rgba), cv2.COLOR_RGBA2BGRA)
+                _, _, _, alpha_mask = cv2.split(cv2_img_bgra)
+                if np.any(alpha_mask < 250):
+                    segmented_bytes = contents
+                    img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
+                else:
+                    segmented_bytes, cv2_img_bgra, alpha_mask = segment_garment(contents)
+                    img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
+            else:
+                segmented_bytes, cv2_img_bgra, alpha_mask = segment_garment(contents)
+                img_bgr_isolated = cv2.cvtColor(cv2_img_bgra, cv2.COLOR_BGRA2BGR)
         except Exception as e:
             # Fallback if rembg fails (e.g. invalid format or background removal model error)
             segmented_bytes = contents

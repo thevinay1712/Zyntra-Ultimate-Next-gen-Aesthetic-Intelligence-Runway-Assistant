@@ -89,9 +89,23 @@ const processImageFloodFill = (imageSrc, keyColor, tolerance, feather = 8) => {
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+
+      // Downscale for fast zero-lag flood fill preview on large camera images
+      const MAX_DIM = 600;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) {
+          h = Math.round((h * MAX_DIM) / w);
+          w = MAX_DIM;
+        } else {
+          w = Math.round((w * MAX_DIM) / h);
+          h = MAX_DIM;
+        }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
@@ -268,7 +282,6 @@ export default function Upload() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [nameValidationError, setNameValidationError] = useState(null);
   // Trigger background removal on original image changes
-  /* Comment out frontend local background removal process to eliminate UI lag
   useEffect(() => {
     if (!originalUrl || !autoRemove) {
       setBgRemovedBlob(null);
@@ -296,10 +309,10 @@ export default function Upload() {
       } finally {
         setProcessing(false);
       }
-    }, 300);
+    }, 250);
 
+    return () => clearTimeout(timer);
   }, [originalUrl, keyColor, tolerance, autoRemove]);
-  */
 
 
 
@@ -462,6 +475,7 @@ export default function Upload() {
     
     // Append the original file directly to be processed by the server-side AI API
     data.append('image', originalFile);
+    data.append('autoRemove', autoRemove ? 'true' : 'false');
 
     data.append('name', formData.name);
     data.append('category', formData.category);
@@ -856,16 +870,15 @@ export default function Upload() {
 
             <div className="form-actions">
               {isBgRemovalImperfect && (
-                <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#f87171', textAlign: 'center', fontWeight: 600 }}>
-                  🛑 Fix background removal above before uploading
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--accent-violet-light)', textAlign: 'center', fontWeight: 600 }}>
+                  ✨ Studio AI isolation will refine edges automatically upon upload
                 </p>
               )}
               <button
                 type="submit"
                 className="btn btn-primary btn-lg submit-btn"
-                disabled={loading || !originalFile || processing || (autoRemove && isBgRemovalImperfect)}
+                disabled={loading || !originalFile || processing}
                 id="btn-upload-submit"
-                title={isBgRemovalImperfect ? 'Background removal imperfect — please re-upload with a plain background' : ''}
               >
                 {loading ? <span className="loader-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Add to your Wardrobe'}
               </button>

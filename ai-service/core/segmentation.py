@@ -13,6 +13,17 @@ def segment_garment(image_bytes: bytes) -> tuple:
         cv2_img_bgra: np.ndarray (OpenCV BGRA image of isolated garment)
         alpha_mask: np.ndarray (single channel grayscale mask, 0 for background, 255 for garment)
     """
+    # Pre-resize if image exceeds 768px to ensure CPU inference completes promptly
+    try:
+        pil_raw = Image.open(io.BytesIO(image_bytes))
+        if pil_raw.width > 768 or pil_raw.height > 768:
+            pil_raw.thumbnail((768, 768), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            pil_raw.save(buf, format="PNG")
+            image_bytes = buf.getvalue()
+    except Exception:
+        pass
+
     # 1. Strip background
     segmented_bytes = remove(image_bytes)
     

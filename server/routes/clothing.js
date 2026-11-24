@@ -90,10 +90,38 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     let bgRemoved = false;
     let transparentBuffer = null;
 
-    // --- HUGGING FACE: AI BACKGROUND REMOVAL (Option 1) ---
-    if (process.env.HF_API_TOKEN) {
+    // --- 1. LOCAL PYTHON AI SERVICE BACKGROUND REMOVAL (Primary: Fast & High Quality) ---
+    try {
+      console.log('🤖 Querying local Python AI service (rembg / bria-rmbg-2.0) for background isolation...');
+      const localFormData = new FormData();
+      localFormData.append('file', fileBuffer, {
+        filename: req.file.filename,
+        contentType: originalMime
+      });
+
+      const localResponse = await fetch('http://127.0.0.1:8000/remove-bg', {
+        method: 'POST',
+        body: localFormData.getBuffer ? localFormData.getBuffer() : localFormData,
+        headers: localFormData.getHeaders ? localFormData.getHeaders() : undefined,
+        timeout: 90000 // 90-second timeout for CPU inference
+      });
+
+      if (localResponse.ok) {
+        transparentBuffer = await localResponse.buffer();
+        bgRemoved = true;
+        console.log('✅ Background isolated successfully via local Python AI service!');
+      } else {
+        const localErrorText = await localResponse.text();
+        console.warn(`Local AI service background removal failed (status ${localResponse.status}): ${localErrorText}`);
+      }
+    } catch (err) {
+      console.warn('Failed to call local Python AI background removal service:', err.message);
+    }
+
+    // --- 2. FALLBACK: HUGGING FACE RMBG-1.4 (If local AI service is unavailable) ---
+    if (!bgRemoved && process.env.HF_API_TOKEN) {
       try {
-        console.log('🤖 Querying Hugging Face RMBG-1.4 model for background isolation...');
+        console.log('🌐 Falling back to Hugging Face RMBG-1.4 model for background isolation...');
         const hfResponse = await fetch('https://api-inference.huggingface.co/models/briaai/RMBG-1.4', {
           method: 'POST',
           headers: {
@@ -101,7 +129,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
             'Content-Type': originalMime
           },
           body: fileBuffer,
-          timeout: 15000 // 15-second timeout
+          timeout: 6000 // Short 6-second timeout
         });
 
         if (hfResponse.ok) {
@@ -114,38 +142,6 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
         }
       } catch (err) {
         console.warn('Failed to call Hugging Face background removal API:', err.message);
-      }
-    } else {
-      console.warn('HF_API_TOKEN is not defined in .env. Skipping Hugging Face background removal.');
-    }
-
-    // --- FALLBACK: LOCAL PYTHON AI SERVICE BACKGROUND REMOVAL ---
-    if (!bgRemoved) {
-      try {
-        console.log('🔌 Falling back to local Python AI service for background removal...');
-        const localFormData = new FormData();
-        localFormData.append('file', fileBuffer, {
-          filename: req.file.filename,
-          contentType: originalMime
-        });
-
-        const localResponse = await fetch('http://localhost:8000/remove-bg', {
-          method: 'POST',
-          body: localFormData,
-          headers: localFormData.getHeaders(),
-          timeout: 25000 // 25-second timeout
-        });
-
-        if (localResponse.ok) {
-          transparentBuffer = await localResponse.buffer();
-          bgRemoved = true;
-          console.log('✅ Background isolated successfully via local Python AI service!');
-        } else {
-          const localErrorText = await localResponse.text();
-          console.warn(`Local AI service background removal failed (status ${localResponse.status}): ${localErrorText}`);
-        }
-      } catch (err) {
-        console.warn('Failed to call local Python AI background removal service:', err.message);
       }
     }
 
@@ -199,15 +195,19 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     try {
       console.log('🧠 Querying Zyntra Closet AI service...');
       const formData = new FormData();
-      formData.append('image', fs.createReadStream(req.file.path));
+      const fileBytes = fs.readFileSync(req.file.path);
+      formData.append('image', fileBytes, {
+        filename: req.file.filename,
+        contentType: req.file.mimetype || 'image/png'
+      });
       formData.append('category', category || 'tops');
       formData.append('item_name', name || '');  // Send name for CLIP semantic validation
 
-      const aiResponse = await fetch('http://localhost:8000/analyze-clothing', {
+      const aiResponse = await fetch('http://127.0.0.1:8000/analyze-clothing', {
         method: 'POST',
-        body: formData,
+        body: formData.getBuffer(),
         headers: formData.getHeaders(),
-        timeout: 45000 // 45-second timeout — CLIP needs time to load model + run 2 inferences
+        timeout: 90000 // 90-second timeout — CLIP needs time to load model + run 2 inferences
       });
 
       if (aiResponse.ok) {
