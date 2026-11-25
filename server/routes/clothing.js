@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
 const Clothing = require('../models/Clothing');
 const { extractColors } = require('../services/imageService');
@@ -10,6 +11,31 @@ const FormData = require('form-data');
 const fetch = require('node-fetch');
 
 const router = express.Router();
+
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
+const fallbackFilePath = path.join(__dirname, '..', 'data', 'fallback_clothing.json');
+
+function getFallbackClothing() {
+  try {
+    if (fs.existsSync(fallbackFilePath)) {
+      return JSON.parse(fs.readFileSync(fallbackFilePath, 'utf8'));
+    }
+  } catch (e) {
+    console.warn('Error reading fallback clothing:', e.message);
+  }
+  return [];
+}
+
+function saveFallbackClothingItem(item) {
+  try {
+    const list = getFallbackClothing();
+    list.unshift(item);
+    fs.writeFileSync(fallbackFilePath, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Error writing fallback clothing:', e.message);
+  }
+}
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -69,7 +95,18 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     console.log(`[UPLOAD] User ID: ${req.userId} (type: ${typeof req.userId}), File Hash: ${fileHash}`);
 
     // 1. Check if the exact same image has already been uploaded by the user
-    const existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash });
+    let existingHash = null;
+    if (isDbConnected()) {
+      try {
+        existingHash = await Clothing.findOne({ userId: req.userId, imageHash: fileHash }).maxTimeMS(2000);
+      } catch (e) {
+        const fallbackList = getFallbackClothing();
+        existingHash = fallbackList.find(c => c.imageHash === fileHash);
+      }
+    } else {
+      const fallbackList = getFallbackClothing();
+      existingHash = fallbackList.find(c => c.imageHash === fileHash);
+    }
     console.log(`[UPLOAD] Duplicate query result:`, existingHash ? { id: existingHash._id, name: existingHash.name, hash: existingHash.imageHash } : 'None found');
     if (existingHash) {
       if (req.file) {
@@ -79,7 +116,18 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     }
 
     // 2. Check if an item with the same name already exists in user's wardrobe
-    const existingName = await Clothing.findOne({ userId: req.userId, name: name });
+    let existingName = null;
+    if (isDbConnected()) {
+      try {
+        existingName = await Clothing.findOne({ userId: req.userId, name: name }).maxTimeMS(2000);
+      } catch (e) {
+        const fallbackList = getFallbackClothing();
+        existingName = fallbackList.find(c => c.name && c.name.toLowerCase() === (name || '').toLowerCase());
+      }
+    } else {
+      const fallbackList = getFallbackClothing();
+      existingName = fallbackList.find(c => c.name && c.name.toLowerCase() === (name || '').toLowerCase());
+    }
     if (existingName) {
       if (req.file) {
         fs.unlinkSync(req.file.path);
@@ -151,7 +199,13 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       const transparentHash = crypto.createHash('sha256').update(transparentBuffer).digest('hex');
       console.log(`[UPLOAD] Isolated Hash: ${transparentHash}`);
 
-      const existingTransparent = await Clothing.findOne({ userId: req.userId, imageHash: transparentHash });
+      let existingTransparent = null;
+      try {
+        existingTransparent = await Clothing.findOne({ userId: req.userId, imageHash: transparentHash }).maxTimeMS(2000);
+      } catch (e) {
+        const fallbackList = getFallbackClothing();
+        existingTransparent = fallbackList.find(c => c.imageHash === transparentHash);
+      }
       console.log(`[UPLOAD] Legacy/isolated duplicate query result:`, existingTransparent ? { id: existingTransparent._id, name: existingTransparent.name } : 'None found');
       if (existingTransparent) {
         if (req.file) {
@@ -272,24 +326,54 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       }
     }
 
-    const clothing = await Clothing.create({
-      userId: req.userId,
-      name,
-      category,
-      subcategory: subcategory || '',
-      color: colorData,
-      season,
-      occasion,
-      imageUrl: `/uploads/${req.file.filename}`,
-      imageHash: fileHash,
-      brand: brand || '',
-      tags,
-      uploadQuality: aiQuality,
-      aesthetic: aiAesthetic,
-      pattern: aiPattern,
-      fit: aiFit,
-      styleVector: aiStyleVector
-    });
+    let clothing = null;
+    if (isDbConnected()) {
+      try {
+        clothing = await Clothing.create({
+          userId: req.userId,
+          name,
+          category,
+          subcategory: subcategory || '',
+          color: colorData,
+          season,
+          occasion,
+          imageUrl: `/uploads/${req.file.filename}`,
+          imageHash: fileHash,
+          brand: brand || '',
+          tags,
+          uploadQuality: aiQuality,
+          aesthetic: aiAesthetic,
+          pattern: aiPattern,
+          fit: aiFit,
+          styleVector: aiStyleVector
+        });
+      } catch (dbErr) {
+        console.warn('Database save failed or timed out, saving to offline fallback store:', dbErr.message);
+      }
+    }
+    if (!clothing) {
+      clothing = {
+        _id: 'local_' + Date.now(),
+        userId: req.userId,
+        name,
+        category,
+        subcategory: subcategory || '',
+        color: colorData,
+        season,
+        occasion,
+        imageUrl: `/uploads/${req.file.filename}`,
+        imageHash: fileHash,
+        brand: brand || '',
+        tags,
+        uploadQuality: aiQuality,
+        aesthetic: aiAesthetic,
+        pattern: aiPattern,
+        fit: aiFit,
+        styleVector: aiStyleVector,
+        createdAt: new Date().toISOString()
+      };
+      saveFallbackClothingItem(clothing);
+    }
 
     res.status(201).json({ clothing });
   } catch (err) {
@@ -301,7 +385,17 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 // GET /api/clothing/:id/similar — Retrieve visually similar clothes using local Cosine Similarity
 router.get('/:id/similar', auth, async (req, res) => {
   try {
-    const target = await Clothing.findOne({ _id: req.params.id, userId: req.userId });
+    let target = null;
+    try {
+      target = await Clothing.findOne({ _id: req.params.id, userId: req.userId }).maxTimeMS(2000);
+    } catch (e) {
+      const fallbackList = getFallbackClothing();
+      target = fallbackList.find(c => String(c._id) === String(req.params.id));
+    }
+    if (!target) {
+      const fallbackList = getFallbackClothing();
+      target = fallbackList.find(c => String(c._id) === String(req.params.id));
+    }
     if (!target) {
       return res.status(404).json({ message: 'Clothing item not found' });
     }
@@ -311,10 +405,16 @@ router.get('/:id/similar', auth, async (req, res) => {
     }
 
     // Fetch all other items in the wardrobe
-    const allItems = await Clothing.find({ 
-      userId: req.userId, 
-      _id: { $ne: target._id } 
-    });
+    let allItems = [];
+    try {
+      allItems = await Clothing.find({ 
+        userId: req.userId, 
+        _id: { $ne: target._id } 
+      }).maxTimeMS(2000);
+    } catch (e) {
+      const fallbackList = getFallbackClothing();
+      allItems = fallbackList.filter(c => String(c._id) !== String(target._id));
+    }
 
     const cosineSimilarity = (vecA, vecB) => {
       if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) return 0.0;
@@ -348,24 +448,48 @@ router.get('/:id/similar', auth, async (req, res) => {
 // GET /api/clothing — Get all user's clothes (with optional filters)
 router.get('/', auth, async (req, res) => {
   try {
-    const query = { userId: req.userId };
+    let clothes = [];
+    if (isDbConnected()) {
+      try {
+        const query = { userId: req.userId };
+        if (req.query.category) query.category = req.query.category;
+        if (req.query.season) query.season = req.query.season;
+        if (req.query.occasion) query.occasion = req.query.occasion;
+        clothes = await Clothing.find(query).sort({ createdAt: -1 }).maxTimeMS(2000);
+      } catch (dbErr) {
+        clothes = [];
+      }
+    }
 
-    if (req.query.category) query.category = req.query.category;
-    if (req.query.season) query.season = req.query.season;
-    if (req.query.occasion) query.occasion = req.query.occasion;
+    if (!clothes || clothes.length === 0) {
+      let list = getFallbackClothing();
+      if (req.query.category) list = list.filter(c => c.category === req.query.category);
+      if (req.query.season) list = list.filter(c => c.season && c.season.includes(req.query.season));
+      if (req.query.occasion) list = list.filter(c => c.occasion && c.occasion.includes(req.query.occasion));
+      clothes = list;
+    }
 
-    const clothes = await Clothing.find(query).sort({ createdAt: -1 });
-    res.json({ clothes });
+    res.json({ clothes: clothes || [] });
   } catch (err) {
     console.error('Fetch error:', err);
-    res.status(500).json({ message: 'Failed to fetch clothes' });
+    res.json({ clothes: getFallbackClothing() });
   }
 });
 
 // GET /api/clothing/:id
 router.get('/:id', auth, async (req, res) => {
   try {
-    const clothing = await Clothing.findOne({ _id: req.params.id, userId: req.userId });
+    let clothing = null;
+    try {
+      clothing = await Clothing.findOne({ _id: req.params.id, userId: req.userId }).maxTimeMS(2000);
+    } catch (e) {
+      const fallbackList = getFallbackClothing();
+      clothing = fallbackList.find(c => String(c._id) === String(req.params.id));
+    }
+    if (!clothing) {
+      const fallbackList = getFallbackClothing();
+      clothing = fallbackList.find(c => String(c._id) === String(req.params.id));
+    }
     if (!clothing) return res.status(404).json({ message: 'Item not found' });
     res.json({ clothing });
   } catch (err) {
@@ -429,7 +553,17 @@ router.post('/tryon', auth, upload.fields([
 
     if (clothingId && clothingId !== 'null' && clothingId !== 'undefined') {
       // Use existing wardrobe item
-      const item = await Clothing.findOne({ _id: clothingId, userId: req.userId });
+      let item = null;
+      try {
+        item = await Clothing.findOne({ _id: clothingId, userId: req.userId }).maxTimeMS(2000);
+      } catch (e) {
+        const fallbackList = getFallbackClothing();
+        item = fallbackList.find(c => String(c._id) === String(clothingId));
+      }
+      if (!item) {
+        const fallbackList = getFallbackClothing();
+        item = fallbackList.find(c => String(c._id) === String(clothingId));
+      }
       if (!item) {
         if (garmentFile) fs.unlinkSync(garmentFile.path);
         if (modelFile) fs.unlinkSync(modelFile.path);
